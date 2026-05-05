@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { flushAutosaves } from '../../lib/autosaveRegistry'
 import { Rail } from './Rail'
 import { WritingScreen } from '../../screens/WritingScreen'
 import { CodexScreen } from '../../screens/CodexScreen'
@@ -21,6 +22,7 @@ export function AppShell() {
     const handler = async (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault()
+        await flushAutosaves()
         await invoke('save_project')
         setLastSaved(new Date())
       }

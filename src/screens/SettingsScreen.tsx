@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { flushAutosaves } from '../lib/autosaveRegistry'
 import { useAIStore } from '../store/aiStore'
 import { useSettingsStore } from '../store/settingsStore'
 import { testOpenAI } from '../lib/ai/providers/openai'
@@ -313,8 +314,6 @@ function AIProvidersSection() {
 }
 
 function AppearanceSection() {
-  const { fontSize, update } = useSettingsStore()
-
   return (
     <div>
       <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
@@ -322,25 +321,6 @@ function AppearanceSection() {
       </div>
       <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>
         Customize how the app looks.
-      </div>
-
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '12px 0', borderBottom: '1px solid var(--border-subtle)',
-      }}>
-        <div>
-          <div style={{ fontSize: 14, color: 'var(--text-primary)' }}>Editor font size</div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{fontSize}px</div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>12</span>
-          <input
-            type="range" min={12} max={20} value={fontSize}
-            onChange={e => update('font_size', e.target.value)}
-            style={{ width: 120, accentColor: 'var(--color-gold)', cursor: 'pointer' }}
-          />
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>20</span>
-        </div>
       </div>
 
       <div style={{ padding: '12px 0' }}>
@@ -476,7 +456,11 @@ function AboutSection() {
         }}>
           <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>Open project folder</span>
           <button
-            onClick={() => invoke('save_project').catch(() => {})}
+            onClick={() => {
+              flushAutosaves()
+                .then(() => invoke('save_project'))
+                .catch(() => {})
+            }}
             style={{
               background: 'transparent',
               border: '1px solid var(--border-medium)',

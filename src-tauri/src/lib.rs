@@ -4,6 +4,7 @@ use commands::file_commands::{
     close_project, create_project, open_project, save_project, ProjectState,
 };
 use commands::db_commands::initialize_schema;
+use commands::font_commands::get_system_fonts;
 use std::sync::Mutex;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -21,6 +22,7 @@ pub fn run() {
             save_project,
             close_project,
             initialize_schema,
+            get_system_fonts,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

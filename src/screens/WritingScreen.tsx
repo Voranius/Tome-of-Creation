@@ -2,6 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import Placeholder from '@tiptap/extension-placeholder'
 import { baseExtensions, baseEditorProps } from '../lib/editor/editorConfig'
+import {
+  CURATED_FONT_OPTIONS,
+  isCuratedFontId,
+  resolveEditorBaseFontFamily,
+  type CuratedFontSelectValue,
+} from '../lib/editor/curatedFonts'
 import { useAutosave } from '../hooks/useAutosave'
 import {
   DndContext, DragOverlay, closestCenter, PointerSensor, useSensor, useSensors,
@@ -15,6 +21,7 @@ import { useWritingStore } from '../store/writingStore'
 import { useProjectStore } from '../store/projectStore'
 import { useAIStore } from '../store/aiStore'
 import { useUIStore } from '../store/uiStore'
+import { useSettingsStore } from '../store/settingsStore'
 import { getBooks, createBook } from '../lib/db/books'
 import { getChapters, createChapter, updateChapterTitle, archiveChapter, reorderChapters } from '../lib/db/chapters'
 import { getScenes, createScene, updateScene, archiveScene, reorderScenes } from '../lib/db/scenes'
@@ -670,14 +677,179 @@ function ToolbarDivider() {
   return <div style={{ width: 1, height: 16, background: 'var(--border-medium)', margin: '0 3px', flexShrink: 0 }} />
 }
 
+const FONT_SIZES = [12, 14, 16, 18, 20, 24]
+type FontSizeSelectValue = 'default' | `${number}` | 'mixed'
+
+const selectStyle: React.CSSProperties = {
+  background: 'transparent',
+  border: '1px solid var(--border-subtle)',
+  borderRadius: 4,
+  color: 'var(--text-dim)',
+  fontSize: 11,
+  fontFamily: 'inherit',
+  padding: '2px 4px',
+  cursor: 'pointer',
+  height: 24,
+}
+
+function normalizeTextStyleValue(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null
+}
+
+function getSelectionTextStyleValue(
+  editor: Editor,
+  attribute: 'fontKey' | 'fontSize'
+): string | null | 'mixed' {
+  if (editor.state.selection.empty) {
+    const attributes = editor.getAttributes('textStyle') as Record<string, unknown>
+    return normalizeTextStyleValue(attributes[attribute])
+  }
+
+  const values = new Set<string | null>()
+  const { from, to } = editor.state.selection
+
+  editor.state.doc.nodesBetween(from, to, node => {
+    if (!node.isText) return
+
+    const textStyleMark = node.marks.find(mark => mark.type.name === 'textStyle')
+    values.add(normalizeTextStyleValue(textStyleMark?.attrs?.[attribute]))
+  })
+
+  if (values.size === 0) return null
+  if (values.size === 1) return values.values().next().value ?? null
+  return 'mixed'
+}
+
+function getFontFamilySelectValue(editor: Editor): CuratedFontSelectValue {
+  const value = getSelectionTextStyleValue(editor, 'fontKey')
+
+  if (value === 'mixed') return 'mixed'
+  if (value === null) return 'default'
+  return isCuratedFontId(value) ? value : 'mixed'
+}
+
+function getFontSizeSelectValue(editor: Editor): FontSizeSelectValue {
+  const value = getSelectionTextStyleValue(editor, 'fontSize')
+
+  if (value === 'mixed') return 'mixed'
+  if (value === null) return 'default'
+
+  const match = /^(\d+)px$/.exec(value)
+
+  return match ? (match[1] as `${number}`) : 'mixed'
+}
+
+function isHeadingSelection(editor: Editor): boolean {
+  const { selection } = editor.state
+
+  if (selection.empty) {
+    return selection.$from.parent.type.name === 'heading'
+  }
+
+  if (selection.$from.parent.type.name === 'heading' || selection.$to.parent.type.name === 'heading') {
+    return true
+  }
+
+  let hasHeading = false
+
+  editor.state.doc.nodesBetween(selection.from, selection.to, node => {
+    if (node.type.name === 'heading') {
+      hasHeading = true
+      return false
+    }
+
+    return undefined
+  })
+
+  return hasHeading
+}
+
 function EditorToolbar({ editor }: { editor: Editor | null }) {
+  const [, setToolbarVersion] = useState(0)
+
+  useEffect(() => {
+    if (!editor) return
+
+    const refresh = () => setToolbarVersion(version => version + 1)
+
+    editor.on('selectionUpdate', refresh)
+    editor.on('transaction', refresh)
+    editor.on('focus', refresh)
+    editor.on('blur', refresh)
+
+    return () => {
+      editor.off('selectionUpdate', refresh)
+      editor.off('transaction', refresh)
+      editor.off('focus', refresh)
+      editor.off('blur', refresh)
+    }
+  }, [editor])
+
   if (!editor) return null
+
+  const activeEditor = editor
+
+  const fontFamilyValue = getFontFamilySelectValue(activeEditor)
+  const fontSizeValue = getFontSizeSelectValue(activeEditor)
+  const fontControlsDisabled = isHeadingSelection(activeEditor)
+
+  function handleFontFamilyChange(value: string) {
+    if (value === 'default') {
+      activeEditor.chain().focus().unsetCuratedFontFamily().run()
+      return
+    }
+
+    if (isCuratedFontId(value)) {
+      activeEditor.chain().focus().setCuratedFontFamily(value).run()
+    }
+  }
+
+  function handleFontSizeChange(value: string) {
+    if (value === 'default') {
+      activeEditor.chain().focus().unsetFontSize().run()
+      return
+    }
+
+    activeEditor.chain().focus().setFontSize(`${value}px`).run()
+  }
 
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0,
-      padding: '4px 48px', borderBottom: '1px solid var(--border-subtle)',
+      display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0, flexWrap: 'nowrap',
+      padding: '4px 48px', borderBottom: '1px solid var(--border-subtle)', overflowX: 'auto',
     }}>
+      {/* Font family */}
+      <select
+        value={fontFamilyValue}
+        onChange={e => handleFontFamilyChange(e.target.value)}
+        style={{ ...selectStyle, maxWidth: 140, opacity: fontControlsDisabled ? 0.5 : 1 }}
+        title="Font family"
+        disabled={fontControlsDisabled}
+      >
+        <option value="default">Default</option>
+        {fontFamilyValue === 'mixed' && <option value="mixed">Mixed</option>}
+        {CURATED_FONT_OPTIONS.map(option => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
+
+      {/* Font size */}
+      <select
+        value={fontSizeValue}
+        onChange={e => handleFontSizeChange(e.target.value)}
+        style={{ ...selectStyle, width: 68, marginLeft: 4, opacity: fontControlsDisabled ? 0.5 : 1 }}
+        title="Font size"
+        disabled={fontControlsDisabled}
+      >
+        <option value="default">Default</option>
+        {fontSizeValue === 'mixed' && <option value="mixed">Mixed</option>}
+        {FONT_SIZES.map(s => (
+          <option key={s} value={String(s)}>{s}</option>
+        ))}
+      </select>
+
+      <ToolbarDivider />
+
       {/* Block type */}
       <ToolbarBtn onActivate={() => editor.chain().focus().setParagraph().run()} active={editor.isActive('paragraph')} title="Paragraph">
         <span style={{ fontSize: 12 }}>¶</span>
@@ -735,6 +907,7 @@ function EditorToolbar({ editor }: { editor: Editor | null }) {
 
 function SceneEditorShell({ scene }: { scene: Scene }) {
   const { updateSceneInStore } = useWritingStore()
+  const { editorFontFamily, editorFontSize } = useSettingsStore()
   const [title, setTitle] = useState(scene.title)
   const [wordCount, setWordCount] = useState(scene.word_count)
   const [content, setContent] = useState(scene.content ?? '')
@@ -744,26 +917,19 @@ function SceneEditorShell({ scene }: { scene: Scene }) {
 
   useEffect(() => { setTitle(scene.title) }, [scene.id])
 
-  // Flush any pending unsaved content when this scene instance unmounts
-  useEffect(() => {
-    const id = scene.id
-    return () => {
-      const pending = pendingRef.current
-      if (pending !== null) {
-        updateScene(id, { content: pending, word_count: wordCountRef.current })
-          .then(() => updateSceneInStore(id, { content: pending, word_count: wordCountRef.current }))
-          .catch(console.error)
-        pendingRef.current = null
-      }
-    }
-  }, [])
-
-  const saveStatus = useAutosave(content, useCallback(async (c: string) => {
+  const { status: saveStatus, flush } = useAutosave(content, useCallback(async (c: string) => {
     await updateScene(scene.id, { content: c, word_count: wordCountRef.current })
     // Keep store in sync so switching back loads the correct content
     updateSceneInStore(scene.id, { content: c, word_count: wordCountRef.current })
     pendingRef.current = null
   }, [scene.id]))
+
+  // Flush any pending unsaved content when this scene instance unmounts
+  useEffect(() => {
+    return () => {
+      void flush().catch(console.error)
+    }
+  }, [flush])
 
   const editor = useEditor({
     extensions: [
@@ -820,7 +986,11 @@ function SceneEditorShell({ scene }: { scene: Scene }) {
       <EditorToolbar editor={editor} />
 
       {/* Editor */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div style={{
+        flex: 1, overflowY: 'auto',
+        fontFamily: resolveEditorBaseFontFamily(editorFontFamily) ?? 'inherit',
+        fontSize: editorFontSize,
+      }}>
         <EditorContent editor={editor} style={{ minHeight: '100%' }} />
       </div>
 
