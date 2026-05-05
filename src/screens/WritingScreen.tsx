@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useEditor, EditorContent } from '@tiptap/react'
+import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import Placeholder from '@tiptap/extension-placeholder'
 import { baseExtensions, baseEditorProps } from '../lib/editor/editorConfig'
 import { useAutosave } from '../hooks/useAutosave'
@@ -635,6 +635,104 @@ function OutlinePanel() {
 
 // ─── Scene Editor Shell ───────────────────────────────────────────────────────
 
+// ─── Editor Toolbar ───────────────────────────────────────────────────────────
+
+function ToolbarBtn({
+  onActivate,
+  active = false,
+  title,
+  children,
+}: {
+  onActivate: () => void
+  active?: boolean
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onMouseDown={e => { e.preventDefault(); onActivate() }}
+      title={title}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        width: 28, height: 28, borderRadius: 4, border: 'none', cursor: 'pointer',
+        fontFamily: 'inherit', fontSize: 13,
+        background: active ? 'rgba(201,168,76,0.15)' : 'transparent',
+        color: active ? 'var(--color-gold)' : 'var(--text-dim)',
+        transition: 'background 100ms, color 100ms',
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function ToolbarDivider() {
+  return <div style={{ width: 1, height: 16, background: 'var(--border-medium)', margin: '0 3px', flexShrink: 0 }} />
+}
+
+function EditorToolbar({ editor }: { editor: Editor | null }) {
+  if (!editor) return null
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0,
+      padding: '4px 48px', borderBottom: '1px solid var(--border-subtle)',
+    }}>
+      {/* Block type */}
+      <ToolbarBtn onActivate={() => editor.chain().focus().setParagraph().run()} active={editor.isActive('paragraph')} title="Paragraph">
+        <span style={{ fontSize: 12 }}>¶</span>
+      </ToolbarBtn>
+      <ToolbarBtn onActivate={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })} title="Heading 1">
+        <span style={{ fontWeight: 700, fontSize: 11 }}>H1</span>
+      </ToolbarBtn>
+      <ToolbarBtn onActivate={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })} title="Heading 2">
+        <span style={{ fontWeight: 700, fontSize: 11 }}>H2</span>
+      </ToolbarBtn>
+      <ToolbarBtn onActivate={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive('heading', { level: 3 })} title="Heading 3">
+        <span style={{ fontWeight: 700, fontSize: 11 }}>H3</span>
+      </ToolbarBtn>
+
+      <ToolbarDivider />
+
+      {/* Inline formatting */}
+      <ToolbarBtn onActivate={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold (⌘B)">
+        <span style={{ fontWeight: 700 }}>B</span>
+      </ToolbarBtn>
+      <ToolbarBtn onActivate={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic (⌘I)">
+        <span style={{ fontStyle: 'italic' }}>I</span>
+      </ToolbarBtn>
+      <ToolbarBtn onActivate={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Underline (⌘U)">
+        <span style={{ textDecoration: 'underline' }}>U</span>
+      </ToolbarBtn>
+      <ToolbarBtn onActivate={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Strikethrough">
+        <span style={{ textDecoration: 'line-through' }}>S</span>
+      </ToolbarBtn>
+
+      <ToolbarDivider />
+
+      {/* Block formatting */}
+      <ToolbarBtn onActivate={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive('blockquote')} title="Blockquote">
+        <span style={{ fontSize: 14, lineHeight: 1 }}>❝</span>
+      </ToolbarBtn>
+      <ToolbarBtn onActivate={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet list">
+        <span style={{ fontSize: 12 }}>•≡</span>
+      </ToolbarBtn>
+      <ToolbarBtn onActivate={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Ordered list">
+        <span style={{ fontSize: 11 }}>1.</span>
+      </ToolbarBtn>
+
+      <ToolbarDivider />
+
+      {/* Highlight */}
+      <ToolbarBtn onActivate={() => editor.chain().focus().toggleHighlight().run()} active={editor.isActive('highlight')} title="Highlight">
+        <span style={{ fontSize: 13 }}>◈</span>
+      </ToolbarBtn>
+    </div>
+  )
+}
+
+// ─── Scene Editor Shell ───────────────────────────────────────────────────────
+
 function SceneEditorShell({ scene }: { scene: Scene }) {
   const { updateSceneInStore } = useWritingStore()
   const [title, setTitle] = useState(scene.title)
@@ -718,6 +816,8 @@ function SceneEditorShell({ scene }: { scene: Scene }) {
           onBlurCapture={e => { e.currentTarget.style.borderBottomColor = 'transparent' }}
         />
       </div>
+
+      <EditorToolbar editor={editor} />
 
       {/* Editor */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
