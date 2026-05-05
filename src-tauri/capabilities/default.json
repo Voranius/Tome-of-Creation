@@ -9,6 +9,11 @@
     "sql:default",
     "dialog:allow-open",
     "dialog:allow-save",
-    "fs:default"
+    "fs:default",
+    "store:allow-get",
+    "store:allow-set",
+    "store:allow-delete",
+    "store:allow-save",
+    "store:allow-load"
   ]
 }

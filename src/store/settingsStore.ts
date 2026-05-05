@@ -29,14 +29,10 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   },
 
   update: async (key, value) => {
-    await setSetting(key, value)
-    const all = await getAllSettings()
-    set({
-      fontSize: all.font_size ? parseInt(all.font_size, 10) : get().fontSize,
-      autosaveIntervalMs: all.autosave_interval_ms
-        ? parseInt(all.autosave_interval_ms, 10)
-        : get().autosaveIntervalMs,
-      defaultProvider: all.default_ai_provider ?? get().defaultProvider,
-    })
+    // Optimistic update so controlled inputs respond immediately
+    if (key === 'font_size') set({ fontSize: parseInt(value, 10) })
+    else if (key === 'autosave_interval_ms') set({ autosaveIntervalMs: parseInt(value, 10) })
+    else if (key === 'default_ai_provider') set({ defaultProvider: value || null })
+    setSetting(key, value).catch(console.error)
   },
 }))

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { Rail } from './Rail'
 import { WritingScreen } from '../../screens/WritingScreen'
@@ -9,16 +9,13 @@ import { NotesScreen } from '../../screens/NotesScreen'
 import { SearchScreen } from '../../screens/SearchScreen'
 import { SettingsScreen } from '../../screens/SettingsScreen'
 import { useProjectStore } from '../../store/projectStore'
+import { useUIStore } from '../../store/uiStore'
+import type { Screen } from '../../store/uiStore'
 
-type Screen = 'writing' | 'codex' | 'planner' | 'loom' | 'notes' | 'search' | 'settings'
-
-interface AppShellProps {
-  onClose?: () => void
-}
-
-export function AppShell(_props: AppShellProps = {}) {
-  const [activeScreen, setActiveScreen] = useState<Screen>('writing')
+export function AppShell() {
   const setLastSaved = useProjectStore(s => s.setLastSaved)
+  const activeScreen = useUIStore(s => s.activeScreen)
+  const navigate = useUIStore(s => s.navigate)
 
   useEffect(() => {
     const handler = async (e: KeyboardEvent) => {
@@ -44,7 +41,7 @@ export function AppShell(_props: AppShellProps = {}) {
 
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
-      <Rail activeScreen={activeScreen} onNavigate={setActiveScreen} />
+      <Rail activeScreen={activeScreen} onNavigate={navigate} />
       <main style={{ flex: 1, minWidth: 0, overflow: 'hidden', background: 'var(--color-main)' }}>
         {screens[activeScreen]}
       </main>
