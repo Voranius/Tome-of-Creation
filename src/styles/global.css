@@ -20,3 +20,64 @@ html, body {
   width: 100vw;
   overflow: hidden;
 }
+
+/* ─── TipTap Editor ─────────────────────────────────────────────────────────── */
+
+.tiptap-editor {
+  outline: none;
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--text-primary);
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  min-height: 100%;
+}
+
+.tiptap-editor h1 { font-size: 1.8em; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5em; }
+.tiptap-editor h2 { font-size: 1.4em; font-weight: 600; color: var(--text-primary); margin-bottom: 0.4em; }
+.tiptap-editor h3 { font-size: 1.2em; font-weight: 600; color: var(--text-dim); margin-bottom: 0.3em; }
+
+.tiptap-editor p { margin-bottom: 1em; }
+.tiptap-editor p:last-child { margin-bottom: 0; }
+
+.tiptap-editor blockquote {
+  border-left: 3px solid var(--color-gold);
+  padding-left: 1rem;
+  margin-left: 0;
+  color: var(--text-dim);
+}
+
+.tiptap-editor ul, .tiptap-editor ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1em;
+}
+
+.tiptap-editor li { margin-bottom: 0.25em; }
+
+.tiptap-editor mark {
+  background: rgba(201, 168, 76, 0.25);
+  color: var(--text-primary);
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+.tiptap-editor a {
+  color: var(--color-gold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Gold cursor */
+.tiptap-editor .ProseMirror-cursor {
+  border-left: 2px solid var(--color-gold);
+}
+
+/* Placeholder */
+.tiptap-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
