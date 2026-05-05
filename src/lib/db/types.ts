@@ -100,6 +100,20 @@ export interface SeriesBeat {
   updated_at: string
 }
 
+export interface CodexRelation {
+  id: number
+  entry_a_id: number
+  entry_b_id: number
+  relation: string | null
+  created_at: string
+}
+
+export interface CodexRelationWithEntry {
+  relation_id: number
+  relation: string | null
+  entry: CodexEntry
+}
+
 export interface ProjectData {
   title: string
   path: string
