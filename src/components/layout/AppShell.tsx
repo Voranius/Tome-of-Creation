@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { invoke } from '@tauri-apps/api/core'
 import { Rail } from './Rail'
 import { WritingScreen } from '../../screens/WritingScreen'
 import { CodexScreen } from '../../screens/CodexScreen'
@@ -7,11 +8,29 @@ import { LoomScreen } from '../../screens/LoomScreen'
 import { NotesScreen } from '../../screens/NotesScreen'
 import { SearchScreen } from '../../screens/SearchScreen'
 import { SettingsScreen } from '../../screens/SettingsScreen'
+import { useProjectStore } from '../../store/projectStore'
 
 type Screen = 'writing' | 'codex' | 'planner' | 'loom' | 'notes' | 'search' | 'settings'
 
-export function AppShell() {
+interface AppShellProps {
+  onClose?: () => void
+}
+
+export function AppShell(_props: AppShellProps = {}) {
   const [activeScreen, setActiveScreen] = useState<Screen>('writing')
+  const setLastSaved = useProjectStore(s => s.setLastSaved)
+
+  useEffect(() => {
+    const handler = async (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault()
+        await invoke('save_project')
+        setLastSaved(new Date())
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [setLastSaved])
 
   const screens: Record<Screen, React.ReactNode> = {
     writing:  <WritingScreen />,
