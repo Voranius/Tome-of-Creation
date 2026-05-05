@@ -21,11 +21,11 @@ export const COLOR_ERROR = '#c47560'
 export const COLOR_ERROR_BG = 'rgba(196, 117, 96, 0.12)'
 
 export const CATEGORY_COLORS: Record<string, string> = {
-  character:  '#c9a84c',
-  location:   '#3d9e8a',
-  faction:    '#4ab3d4',
-  magic:      '#7b5ea7',
-  event:      '#c47a8a',
-  item:       '#c4824a',
-  manuscript: '#6a9e5a',
+  characters:  '#c9a84c',
+  locations:   '#3d9e8a',
+  factions:    '#4ab3d4',
+  magic:       '#7b5ea7',
+  events:      '#c47a8a',
+  items:       '#c4824a',
+  manuscript:  '#6a9e5a',
 }

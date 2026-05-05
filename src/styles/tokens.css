@@ -27,13 +27,13 @@
   --color-error-bg: rgba(196, 117, 96, 0.12);
 
   /* Categories */
-  --color-character:  #c9a84c;
-  --color-location:   #3d9e8a;
-  --color-faction:    #4ab3d4;
-  --color-magic:      #7b5ea7;
-  --color-event:      #c47a8a;
-  --color-item:       #c4824a;
-  --color-manuscript: #6a9e5a;
+  --color-characters:  #c9a84c;
+  --color-locations:   #3d9e8a;
+  --color-factions:    #4ab3d4;
+  --color-magic:       #7b5ea7;
+  --color-events:      #c47a8a;
+  --color-items:       #c4824a;
+  --color-manuscript:  #6a9e5a;
 
   /* shadcn variable mapping */
   --background:             var(--color-main);
