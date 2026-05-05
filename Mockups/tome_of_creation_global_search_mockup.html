@@ -1,0 +1,291 @@
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+:root{
+  --rail:#141210;--main:#1c1a16;--panel:#211e19;--gold:#c9a84c;
+  --border:rgba(240,230,210,0.08);--border-med:rgba(240,230,210,0.14);
+  --text-primary:rgba(240,230,210,0.9);--text-muted:rgba(240,230,210,0.45);--text-dim:rgba(240,230,210,0.65);
+  --amber:#c9a84c;--teal:#3d9e8a;--purple:#8b7cc8;--coral:#c47560;--green:#6a9e5a;--blue:#5a8fc4;
+}
+body{background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.app{display:flex;height:680px;width:1200px;overflow:hidden;border-radius:10px;border:1px solid rgba(240,230,210,0.1)}
+
+/* Rail */
+.rail{width:52px;background:var(--rail);display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:4px;border-right:1px solid var(--border);flex-shrink:0}
+.rail-icon{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:6px;cursor:pointer;position:relative;color:rgba(240,230,210,0.35)}
+.rail-icon svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.rail-spacer{flex:1}
+
+/* Main search area */
+.search-main{flex:1;display:flex;flex-direction:column;background:var(--main);overflow:hidden}
+
+/* Top search bar */
+.search-bar-area{padding:20px 24px 0;flex-shrink:0}
+.search-bar-wrap{display:flex;align-items:center;gap:10px;background:rgba(240,230,210,0.05);border:1px solid var(--border-med);border-radius:10px;padding:10px 16px;transition:border-color 0.15s}
+.search-bar-wrap:focus-within{border-color:rgba(201,168,76,0.35)}
+.search-icon{width:18px;height:18px;flex-shrink:0;color:var(--text-muted)}
+.search-icon svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
+.search-input{flex:1;background:transparent;border:none;outline:none;color:var(--text-primary);font-size:15px}
+.search-input::placeholder{color:var(--text-muted)}
+.search-kbd{padding:2px 6px;border-radius:4px;background:rgba(240,230,210,0.07);border:1px solid var(--border-med);font-size:11px;color:var(--text-muted)}
+.search-clear{width:20px;height:20px;border-radius:50%;background:rgba(240,230,210,0.08);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-muted);font-size:12px}
+
+/* Filter tabs */
+.filter-row{display:flex;align-items:center;gap:6px;padding:14px 24px 0;border-bottom:1px solid var(--border);flex-shrink:0}
+.filter-tab{padding:6px 12px;border-radius:6px 6px 0 0;font-size:12px;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.filter-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.filter-tab:hover:not(.active){color:var(--text-dim)}
+.filter-count{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;background:rgba(240,230,210,0.08);font-size:10px;color:var(--text-muted);padding:0 4px;margin-left:4px}
+.filter-tab.active .filter-count{background:rgba(201,168,76,0.15);color:var(--gold)}
+
+/* Results body */
+.results-body{flex:1;display:flex;overflow:hidden}
+
+/* Left: result list */
+.result-list{width:360px;overflow-y:auto;border-right:1px solid var(--border);padding:12px 8px;flex-shrink:0}
+.result-group-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.07em;padding:8px 10px 4px;font-weight:500}
+.result-item{display:flex;align-items:flex-start;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;margin-bottom:2px;border:1px solid transparent}
+.result-item.active{background:rgba(201,168,76,0.08);border-color:rgba(201,168,76,0.18)}
+.result-item:not(.active):hover{background:rgba(240,230,210,0.04)}
+.result-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;margin-top:1px}
+.result-icon-wrap{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.result-icon-wrap svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.result-text{flex:1;min-width:0}
+.result-name{font-size:13px;color:var(--text-primary);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.result-excerpt{font-size:11px;color:var(--text-muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.result-meta{display:flex;align-items:center;gap:5px;margin-top:4px}
+.result-badge{font-size:10px;padding:1px 6px;border-radius:8px}
+mark{background:rgba(201,168,76,0.25);color:var(--gold);border-radius:2px;padding:0 1px}
+
+/* Right: preview panel */
+.preview-panel{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.preview-topbar{height:44px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:10px;flex-shrink:0}
+.preview-avatar{width:28px;height:28px;border-radius:50%;background:rgba(201,168,76,0.2);border:1px solid rgba(201,168,76,0.3);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--gold)}
+.preview-title{font-size:14px;font-weight:500;color:var(--text-primary)}
+.preview-badge{padding:2px 8px;border-radius:10px;font-size:10px}
+.preview-spacer{flex:1}
+.preview-action{padding:4px 12px;border-radius:5px;font-size:11px;border:1px solid var(--border-med);background:rgba(240,230,210,0.05);color:var(--text-dim);cursor:pointer}
+.preview-action.primary{background:rgba(201,168,76,0.12);border-color:rgba(201,168,76,0.25);color:var(--gold)}
+.preview-body{flex:1;overflow-y:auto;padding:20px}
+.preview-hero{height:100px;border-radius:8px;background:rgba(240,230,210,0.04);border:1px dashed rgba(240,230,210,0.1);display:flex;align-items:center;justify-content:center;margin-bottom:16px;color:var(--text-muted);font-size:12px}
+.preview-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px}
+.pf-block{background:rgba(240,230,210,0.04);border-radius:6px;padding:7px 10px}
+.pf-label{font-size:10px;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em}
+.pf-value{font-size:12px;color:var(--text-primary)}
+.preview-section{margin-bottom:14px}
+.ps-title{font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
+.ps-body{font-size:12px;color:rgba(240,230,210,0.75);line-height:1.65;background:rgba(240,230,210,0.03);border-radius:6px;padding:10px;border:1px solid var(--border)}
+.hit-highlight{background:rgba(201,168,76,0.2);color:var(--gold);border-radius:2px;padding:0 2px}
+.inline-chip{display:inline-flex;align-items:center;padding:1px 6px;border-radius:10px;font-size:11px;vertical-align:middle;margin:0 1px}
+.chip-teal{background:rgba(61,158,138,0.15);color:#3d9e8a;border:1px solid rgba(61,158,138,0.25)}
+.chip-amber{background:rgba(201,168,76,0.15);color:#c9a84c;border:1px solid rgba(201,168,76,0.25)}
+.no-results{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:10px;color:var(--text-muted);padding:40px}
+.no-results svg{width:36px;height:36px;fill:none;stroke:currentColor;stroke-width:1;opacity:0.3}
+.empty-label{font-size:13px}
+</style>
+
+<div class="app">
+  <!-- Rail -->
+  <div class="rail">
+    <div class="rail-icon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="16" rx="1"/><rect x="14" y="4" width="6" height="16" rx="1"/></svg></div>
+    <div class="rail-icon"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></div>
+    <div class="rail-icon"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+    <div class="rail-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><line x1="12" y1="7" x2="5" y2="17"/><line x1="12" y1="7" x2="19" y2="17"/></svg></div>
+    <div class="rail-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+    <div class="rail-spacer"></div>
+    <div class="rail-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+    <div class="rail-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+  </div>
+
+  <!-- Main search content -->
+  <div class="search-main">
+
+    <!-- Search bar -->
+    <div class="search-bar-area">
+      <div class="search-bar-wrap">
+        <div class="search-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+        <input class="search-input" value="Varek" placeholder="Search everything — characters, places, chapters…" readonly/>
+        <span class="search-kbd">Esc</span>
+        <div class="search-clear">✕</div>
+      </div>
+    </div>
+
+    <!-- Filter tabs -->
+    <div class="filter-row">
+      <div class="filter-tab active">All <span class="filter-count">14</span></div>
+      <div class="filter-tab">Characters <span class="filter-count">4</span></div>
+      <div class="filter-tab">Locations <span class="filter-count">2</span></div>
+      <div class="filter-tab">Manuscript <span class="filter-count">6</span></div>
+      <div class="filter-tab">Factions <span class="filter-count">1</span></div>
+      <div class="filter-tab">Notes <span class="filter-count">1</span></div>
+    </div>
+
+    <!-- Results body -->
+    <div class="results-body">
+
+      <!-- Left: result list -->
+      <div class="result-list">
+
+        <div class="result-group-label">Characters</div>
+
+        <div class="result-item active">
+          <div class="result-avatar" style="background:rgba(196,117,96,0.15);color:#c47560">LV</div>
+          <div class="result-text">
+            <div class="result-name">Lord <mark>Varek</mark></div>
+            <div class="result-excerpt">Commander of the Obsidian Court. <mark>Varek</mark>'s reach extends across all three northern provinces…</div>
+            <div class="result-meta">
+              <span class="result-badge" style="background:rgba(196,117,96,0.12);color:#c47560;border:1px solid rgba(196,117,96,0.2)">Character</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="result-item">
+          <div class="result-avatar" style="background:rgba(201,168,76,0.15);color:#c9a84c">KD</div>
+          <div class="result-text">
+            <div class="result-name">Kael Draveth</div>
+            <div class="result-excerpt">A scar runs from his left brow — a parting gift from Lord <mark>Varek</mark>'s second…</div>
+            <div class="result-meta">
+              <span class="result-badge" style="background:rgba(201,168,76,0.12);color:#c9a84c;border:1px solid rgba(201,168,76,0.2)">Character</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="result-item">
+          <div class="result-avatar" style="background:rgba(139,124,200,0.15);color:#8b7cc8">SM</div>
+          <div class="result-text">
+            <div class="result-name">Syra of the Mist</div>
+            <div class="result-excerpt">Warned Kael that <mark>Varek</mark> had eyes inside the Ember Road…</div>
+            <div class="result-meta">
+              <span class="result-badge" style="background:rgba(139,124,200,0.12);color:#8b7cc8;border:1px solid rgba(139,124,200,0.2)">Character</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="result-group-label" style="margin-top:6px">Manuscript</div>
+
+        <div class="result-item">
+          <div class="result-icon-wrap" style="background:rgba(106,158,90,0.12);color:#6a9e5a">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="result-text">
+            <div class="result-name">Ch. 3 — A Debt Unpaid</div>
+            <div class="result-excerpt">"<mark>Varek</mark> doesn't forgive," Syra said, her voice low. "He waits."</div>
+            <div class="result-meta">
+              <span class="result-badge" style="background:rgba(106,158,90,0.12);color:#6a9e5a;border:1px solid rgba(106,158,90,0.2)">Scene · Book 1</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="result-item">
+          <div class="result-icon-wrap" style="background:rgba(106,158,90,0.12);color:#6a9e5a">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="result-text">
+            <div class="result-name">Ch. 8 — Blood in the Cistern</div>
+            <div class="result-excerpt">The commander wore Lord <mark>Varek</mark>'s sigil on his pauldron — the obsidian crown.</div>
+            <div class="result-meta">
+              <span class="result-badge" style="background:rgba(106,158,90,0.12);color:#6a9e5a;border:1px solid rgba(106,158,90,0.2)">Scene · Book 1</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="result-item">
+          <div class="result-icon-wrap" style="background:rgba(106,158,90,0.12);color:#6a9e5a">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div class="result-text">
+            <div class="result-name">Ch. 11 — The Obsidian Warrant</div>
+            <div class="result-excerpt"><mark>Varek</mark>'s seal was pressed into black wax, shaped like a crown of broken teeth.</div>
+            <div class="result-meta">
+              <span class="result-badge" style="background:rgba(106,158,90,0.12);color:#6a9e5a;border:1px solid rgba(106,158,90,0.2)">Scene · Book 1</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="result-group-label" style="margin-top:6px">Factions</div>
+
+        <div class="result-item">
+          <div class="result-icon-wrap" style="background:rgba(90,143,196,0.12);color:#5a8fc4">
+            <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div class="result-text">
+            <div class="result-name">The Obsidian Court</div>
+            <div class="result-excerpt">Ruling body of the northern provinces, commanded by Lord <mark>Varek</mark> since the Succession…</div>
+            <div class="result-meta">
+              <span class="result-badge" style="background:rgba(90,143,196,0.12);color:#5a8fc4;border:1px solid rgba(90,143,196,0.2)">Faction</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right: preview panel -->
+      <div class="preview-panel">
+        <div class="preview-topbar">
+          <div class="preview-avatar" style="background:rgba(196,117,96,0.2);border-color:rgba(196,117,96,0.3);color:#c47560">LV</div>
+          <span class="preview-title">Lord Varek</span>
+          <span class="preview-badge" style="background:rgba(196,117,96,0.12);color:#c47560;border:1px solid rgba(196,117,96,0.2)">Character</span>
+          <div class="preview-spacer"></div>
+          <div class="preview-action">View on map</div>
+          <div class="preview-action primary">Open entry →</div>
+        </div>
+
+        <div class="preview-body">
+          <div class="preview-hero">No image · click to upload or generate</div>
+
+          <div class="preview-fields">
+            <div class="pf-block">
+              <div class="pf-label">Role</div>
+              <div class="pf-value">High Commander</div>
+            </div>
+            <div class="pf-block">
+              <div class="pf-label">Age</div>
+              <div class="pf-value">58</div>
+            </div>
+            <div class="pf-block">
+              <div class="pf-label">Status</div>
+              <div class="pf-value" style="color:#c47560">Antagonist</div>
+            </div>
+            <div class="pf-block">
+              <div class="pf-label">Faction</div>
+              <div class="pf-value"><span class="inline-chip" style="background:rgba(90,143,196,0.15);color:#5a8fc4;border:1px solid rgba(90,143,196,0.25)">Obsidian Court</span></div>
+            </div>
+            <div class="pf-block">
+              <div class="pf-label">Magic</div>
+              <div class="pf-value" style="color:var(--text-muted)">None</div>
+            </div>
+            <div class="pf-block">
+              <div class="pf-label">First appears</div>
+              <div class="pf-value" style="color:var(--text-muted)">Ch. 3</div>
+            </div>
+          </div>
+
+          <div class="preview-section">
+            <div class="ps-title">Physical description</div>
+            <div class="ps-body">Heavyset and deliberate in his movements, with close-cropped silver hair and a jaw like a barge prow. Always immaculate — black court dress, obsidian ring on the left hand. His eyes are the grey of old ice, seldom blinking.</div>
+          </div>
+
+          <div class="preview-section">
+            <div class="ps-title">Personality & voice</div>
+            <div class="ps-body">Speaks in full, measured sentences, never raises his voice. Believes patience is the only weapon worth carrying. Has never raised a hand directly — he sends others. The most dangerous person in any room precisely because he appears to be the calmest.</div>
+          </div>
+
+          <div class="preview-section">
+            <div class="ps-title">Backstory — matches your search</div>
+            <div class="ps-body">Commander of the Obsidian Court. <span class="hit-highlight">Varek</span>'s reach extends across all three northern provinces. Seized power during the Succession Wars by being the last man standing who nobody suspected. Kael Draveth's tribunal was engineered by <span class="hit-highlight">Varek</span> personally — he saw Kael as a future threat and moved first.</div>
+          </div>
+
+          <div class="preview-section">
+            <div class="ps-title">Appears in manuscript</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <span class="inline-chip" style="background:rgba(106,158,90,0.12);color:#6a9e5a;border:1px solid rgba(106,158,90,0.2)">Ch. 3 — A Debt Unpaid</span>
+              <span class="inline-chip" style="background:rgba(106,158,90,0.12);color:#6a9e5a;border:1px solid rgba(106,158,90,0.2)">Ch. 8 — Blood in the Cistern</span>
+              <span class="inline-chip" style="background:rgba(106,158,90,0.12);color:#6a9e5a;border:1px solid rgba(106,158,90,0.2)">Ch. 11 — The Obsidian Warrant</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

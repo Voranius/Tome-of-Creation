@@ -1,0 +1,314 @@
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+:root{
+  --rail:#141210;--main:#1c1a16;--panel:#211e19;--gold:#c9a84c;
+  --border:rgba(240,230,210,0.08);--border-med:rgba(240,230,210,0.14);
+  --text-primary:rgba(240,230,210,0.9);--text-muted:rgba(240,230,210,0.45);--text-dim:rgba(240,230,210,0.65);
+  --green:#6a9e5a;--teal:#3d9e8a;--coral:#c47560;--purple:#8b7cc8;
+}
+body{background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.app{display:flex;height:680px;width:1200px;overflow:hidden;border-radius:10px;border:1px solid rgba(240,230,210,0.1)}
+
+.rail{width:52px;background:var(--rail);display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:4px;border-right:1px solid var(--border);flex-shrink:0}
+.rail-icon{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:6px;cursor:pointer;position:relative;color:rgba(240,230,210,0.35)}
+.rail-icon.active{color:var(--gold)}
+.rail-icon.active::before{content:'';position:absolute;left:-1px;top:50%;transform:translateY(-50%);width:2px;height:20px;background:var(--gold);border-radius:0 2px 2px 0}
+.rail-icon svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.rail-spacer{flex:1}
+
+.main{flex:1;display:flex;flex-direction:column;background:var(--main);overflow:hidden}
+
+.topbar{height:44px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:10px;flex-shrink:0}
+.topbar-title{font-size:14px;font-weight:500;color:var(--text-primary)}
+.topbar-spacer{flex:1}
+.structure-selector{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;background:rgba(240,230,210,0.05);border:1px solid var(--border-med);cursor:pointer;font-size:12px;color:var(--text-dim)}
+.structure-selector svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.5}
+.structure-label{color:var(--gold);font-size:12px}
+.tb-btn{padding:4px 12px;border-radius:5px;font-size:11px;border:1px solid var(--border-med);background:rgba(240,230,210,0.05);color:var(--text-dim);cursor:pointer;display:flex;align-items:center;gap:5px}
+.tb-btn svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.5}
+.tb-btn.primary{background:rgba(201,168,76,0.12);border-color:rgba(201,168,76,0.25);color:var(--gold)}
+
+.body{flex:1;display:flex;overflow:hidden}
+.planner{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* Shelf — top-aligned, books hang from top */
+.shelf{display:flex;align-items:flex-start;gap:14px;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
+.book-slot{display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;flex-shrink:0}
+.book-cover{width:72px;height:108px;border-radius:4px;overflow:hidden;position:relative;border:1px solid rgba(240,230,210,0.12);transition:transform 0.15s;flex-shrink:0}
+.book-slot:hover .book-cover{transform:translateY(-3px)}
+.book-slot.active .book-cover{transform:translateY(-4px)}
+.book-slot.active .book-cover::after{content:'';position:absolute;inset:0;border:2px solid var(--gold);border-radius:4px;pointer-events:none}
+.book-cover-placeholder{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px;text-align:center}
+.book-cover-placeholder svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.2;opacity:0.4}
+.book-cover-num{font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em}
+.book-cover-title{font-size:10px;color:var(--text-dim);line-height:1.3;text-align:center}
+.book-meta{font-size:10px;color:var(--text-muted);text-align:center}
+.book-meta.active-label{color:var(--gold)}
+
+/* Add book — same height as covers, top-aligned */
+.add-book{width:72px;height:108px;border-radius:4px;border:1px dashed rgba(240,230,210,0.15);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;color:var(--text-muted);flex-shrink:0}
+.add-book svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5}
+.add-book span{font-size:10px}
+
+/* Timeline */
+.timeline-area{flex:1;overflow-y:auto;padding:20px 20px 20px}
+
+/* Beat row */
+.beat-section{margin-bottom:20px}
+.beat-section-label{font-size:10px;color:rgba(201,168,76,0.5);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;padding-left:58px}
+.beat-track-wrap{padding-left:58px;position:relative;height:36px}
+.beat-track-line{position:absolute;left:58px;right:0;top:10px;height:1px;background:rgba(201,168,76,0.08)}
+.beat-marker{position:absolute;top:0;display:flex;flex-direction:column;align-items:center}
+.beat-tick{width:1px;height:10px;background:rgba(201,168,76,0.3)}
+.beat-tick.major{height:14px;background:rgba(201,168,76,0.5)}
+.beat-name{font-size:9px;color:rgba(201,168,76,0.5);white-space:nowrap;margin-top:3px;letter-spacing:0.03em}
+.beat-name.major{color:var(--gold);font-weight:500}
+
+/* Chapters */
+.chapters-section-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;padding-left:58px;font-weight:500}
+.chapter-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.chapter-num{font-size:11px;color:var(--text-muted);width:48px;text-align:right;flex-shrink:0}
+.chapter-bar{flex:1;height:34px;border-radius:6px;background:rgba(240,230,210,0.06);border:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:8px;cursor:pointer;position:relative;overflow:hidden}
+.chapter-bar.active-chapter{background:rgba(201,168,76,0.08);border-color:rgba(201,168,76,0.2)}
+.chapter-bar::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.chapter-bar.done::before{background:#6a9e5a}
+.chapter-bar.drafting::before{background:#c9a84c}
+.chapter-bar.planned::before{background:rgba(240,230,210,0.15)}
+.chapter-title{font-size:12px;color:var(--text-primary);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chapter-wc{font-size:10px;color:var(--text-muted);flex-shrink:0}
+.chapter-badge{font-size:10px;padding:2px 6px;border-radius:8px;flex-shrink:0}
+.badge-done{background:rgba(106,158,90,0.12);color:#6a9e5a;border:1px solid rgba(106,158,90,0.2)}
+.badge-draft{background:rgba(201,168,76,0.12);color:#c9a84c;border:1px solid rgba(201,168,76,0.2)}
+.badge-planned{background:rgba(240,230,210,0.05);color:var(--text-muted);border:1px solid var(--border)}
+
+/* Right panel */
+.detail-panel{width:260px;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.detail-header{padding:14px 16px;border-bottom:1px solid var(--border)}
+.detail-title{font-size:13px;font-weight:500;color:var(--text-primary);margin-bottom:2px}
+.detail-sub{font-size:11px;color:var(--text-muted)}
+.detail-body{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:14px}
+.detail-section-title{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;font-weight:500}
+.progress-bar-wrap{height:6px;background:rgba(240,230,210,0.06);border-radius:3px;overflow:hidden}
+.progress-bar-fill{height:100%;border-radius:3px;background:var(--gold)}
+.progress-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:4px}
+.beat-pill{display:inline-flex;align-items:center;padding:3px 9px;border-radius:8px;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.2);font-size:11px;color:var(--gold)}
+.detail-notes{font-size:12px;color:rgba(240,230,210,0.7);line-height:1.6;background:rgba(240,230,210,0.03);border-radius:6px;padding:9px;border:1px solid var(--border)}
+.chips-wrap{display:flex;flex-wrap:wrap;gap:5px}
+.chip{font-size:10px;padding:2px 7px;border-radius:8px}
+.open-btn{padding:7px 12px;border-radius:6px;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.2);color:var(--gold);font-size:11px;cursor:pointer;text-align:center;margin-top:auto}
+</style>
+
+<div class="app">
+  <div class="rail">
+    <div class="rail-icon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="16" rx="1"/><rect x="14" y="4" width="6" height="16" rx="1"/></svg></div>
+    <div class="rail-icon"><svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></div>
+    <div class="rail-icon"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+    <div class="rail-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><line x1="12" y1="7" x2="5" y2="17"/><line x1="12" y1="7" x2="19" y2="17"/></svg></div>
+    <div class="rail-icon active"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+    <div class="rail-spacer"></div>
+    <div class="rail-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+    <div class="rail-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-title">Series Planner</span>
+      <div class="topbar-spacer"></div>
+      <div class="structure-selector">
+        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Structure:&nbsp;<span class="structure-label">Save the Cat</span>&nbsp;▾
+      </div>
+      <div class="tb-btn primary">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add chapter
+      </div>
+    </div>
+
+    <div class="body">
+      <div class="planner">
+
+        <!-- Shelf — all items top-aligned -->
+        <div class="shelf">
+          <div class="book-slot active">
+            <div class="book-cover">
+              <div style="width:100%;height:100%;background:linear-gradient(160deg,#3d2810,#1e1208);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:8px;position:relative">
+                <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(201,168,76,0.04),rgba(0,0,0,0.55))"></div>
+                <div style="position:relative;text-align:center">
+                  <div style="font-size:8px;color:rgba(201,168,76,0.55);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px">Book I</div>
+                  <div style="font-size:10px;color:rgba(240,230,210,0.88);line-height:1.3;font-weight:500">The Ashport Gate</div>
+                </div>
+              </div>
+            </div>
+            <div class="book-meta active-label">Book 1 · Active</div>
+          </div>
+
+          <div class="book-slot">
+            <div class="book-cover" style="background:#1a1810">
+              <div class="book-cover-placeholder">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                <div class="book-cover-num">Book II</div>
+                <div class="book-cover-title">Untitled</div>
+              </div>
+            </div>
+            <div class="book-meta">Book 2 · Planned</div>
+          </div>
+
+          <div class="book-slot">
+            <div class="book-cover" style="background:#1a1810">
+              <div class="book-cover-placeholder">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                <div class="book-cover-num">Book III</div>
+                <div class="book-cover-title">Untitled</div>
+              </div>
+            </div>
+            <div class="book-meta">Book 3 · Planned</div>
+          </div>
+
+          <!-- Add book top-aligned, same height as covers -->
+          <div class="add-book">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>Add book</span>
+          </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="timeline-area">
+
+          <!-- Beat sheet -->
+          <div class="beat-section">
+            <div class="beat-section-label">Save the Cat — beat sheet</div>
+            <div class="beat-track-wrap">
+              <div class="beat-track-line"></div>
+              <div class="beat-marker" style="left:0%"><div class="beat-tick"></div><div class="beat-name">Opening image</div></div>
+              <div class="beat-marker" style="left:10%"><div class="beat-tick"></div><div class="beat-name">Theme stated</div></div>
+              <div class="beat-marker" style="left:25%"><div class="beat-tick major"></div><div class="beat-name major">Catalyst</div></div>
+              <div class="beat-marker" style="left:37%"><div class="beat-tick"></div><div class="beat-name">B story</div></div>
+              <div class="beat-marker" style="left:50%"><div class="beat-tick major"></div><div class="beat-name major">Midpoint</div></div>
+              <div class="beat-marker" style="left:63%"><div class="beat-tick"></div><div class="beat-name">Bad guys close in</div></div>
+              <div class="beat-marker" style="left:75%"><div class="beat-tick major"></div><div class="beat-name major">Dark night</div></div>
+              <div class="beat-marker" style="left:88%"><div class="beat-tick"></div><div class="beat-name">Finale</div></div>
+              <div class="beat-marker" style="left:99%"><div class="beat-tick"></div><div class="beat-name">Final image</div></div>
+            </div>
+          </div>
+
+          <!-- Chapters -->
+          <div class="chapters-section-label">Book 1 — Chapters</div>
+
+          <div class="chapter-row">
+            <div class="chapter-num">Ch. 1</div>
+            <div class="chapter-bar done">
+              <span class="chapter-title">The Ashport Gate</span>
+              <span class="chapter-wc">4,210 w</span>
+              <span class="chapter-badge badge-done">Done</span>
+            </div>
+          </div>
+
+          <div class="chapter-row">
+            <div class="chapter-num">Ch. 2</div>
+            <div class="chapter-bar done">
+              <span class="chapter-title">Salt and Smoke</span>
+              <span class="chapter-wc">3,870 w</span>
+              <span class="chapter-badge badge-done">Done</span>
+            </div>
+          </div>
+
+          <div class="chapter-row">
+            <div class="chapter-num">Ch. 3</div>
+            <div class="chapter-bar done">
+              <span class="chapter-title">A Debt Unpaid</span>
+              <span class="chapter-wc">5,100 w</span>
+              <span class="chapter-badge badge-done">Done</span>
+            </div>
+          </div>
+
+          <div class="chapter-row">
+            <div class="chapter-num">Ch. 4</div>
+            <div class="chapter-bar drafting active-chapter">
+              <span class="chapter-title">The Ember Road</span>
+              <span class="chapter-wc">2,640 w</span>
+              <span class="chapter-badge badge-draft">Drafting</span>
+            </div>
+          </div>
+
+          <div class="chapter-row">
+            <div class="chapter-num">Ch. 5</div>
+            <div class="chapter-bar planned">
+              <span class="chapter-title">Syra's Warning</span>
+              <span class="chapter-wc" style="color:var(--text-muted)">—</span>
+              <span class="chapter-badge badge-planned">Planned</span>
+            </div>
+          </div>
+
+          <div class="chapter-row">
+            <div class="chapter-num">Ch. 6</div>
+            <div class="chapter-bar planned">
+              <span class="chapter-title">The Cistern</span>
+              <span class="chapter-wc" style="color:var(--text-muted)">—</span>
+              <span class="chapter-badge badge-planned">Planned</span>
+            </div>
+          </div>
+
+          <div class="chapter-row">
+            <div class="chapter-num">Ch. 7</div>
+            <div class="chapter-bar planned">
+              <span class="chapter-title">Blood and Warrants</span>
+              <span class="chapter-wc" style="color:var(--text-muted)">—</span>
+              <span class="chapter-badge badge-planned">Planned</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Right detail panel -->
+      <div class="detail-panel">
+        <div class="detail-header">
+          <div class="detail-title">Ch. 4 — The Ember Road</div>
+          <div class="detail-sub">Book 1 · Drafting</div>
+        </div>
+        <div class="detail-body">
+
+          <div>
+            <div class="detail-section-title">Progress</div>
+            <div class="progress-bar-wrap">
+              <div class="progress-bar-fill" style="width:62%"></div>
+            </div>
+            <div class="progress-labels">
+              <span>2,640 words</span>
+              <span>~4,200 target</span>
+            </div>
+          </div>
+
+          <div>
+            <div class="detail-section-title">Beat</div>
+            <div class="beat-pill">B story</div>
+          </div>
+
+          <div>
+            <div class="detail-section-title">Scene summary</div>
+            <div class="detail-notes">Kael travels the Ember Road south toward the capital. Syra finds him at the waystation — she has information about Varek's movements but won't give it freely.</div>
+          </div>
+
+          <div>
+            <div class="detail-section-title">Characters present</div>
+            <div class="chips-wrap">
+              <span class="chip" style="background:rgba(201,168,76,0.12);color:#c9a84c;border:1px solid rgba(201,168,76,0.2)">Kael Draveth</span>
+              <span class="chip" style="background:rgba(139,124,200,0.12);color:#8b7cc8;border:1px solid rgba(139,124,200,0.2)">Syra of the Mist</span>
+            </div>
+          </div>
+
+          <div>
+            <div class="detail-section-title">Location</div>
+            <div class="chips-wrap">
+              <span class="chip" style="background:rgba(61,158,138,0.12);color:#3d9e8a;border:1px solid rgba(61,158,138,0.2)">The Ember Road</span>
+            </div>
+          </div>
+
+          <div class="open-btn">Open in editor →</div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

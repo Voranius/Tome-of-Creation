@@ -1,0 +1,229 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font-sans, system-ui, sans-serif); }
+  .app { display: flex; height: 620px; background: #141210; border-radius: 10px; overflow: hidden; border: 1px solid rgba(240,230,210,0.1); font-size: 13px; }
+  .rail { width: 52px; background: #141210; display: flex; flex-direction: column; align-items: center; padding: 12px 0; gap: 4px; border-right: 1px solid rgba(240,230,210,0.06); }
+  .rail-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: rgba(240,230,210,0.4); }
+  .rail-icon.active { background: rgba(201,168,76,0.15); color: #c9a84c; }
+  .rail-icon svg { width: 16px; height: 16px; }
+  .rail-spacer { flex: 1; }
+  .sessions { width: 220px; background: #1c1a16; border-right: 1px solid rgba(240,230,210,0.08); display: flex; flex-direction: column; }
+  .sessions-header { padding: 14px 14px 10px; border-bottom: 1px solid rgba(240,230,210,0.06); }
+  .sessions-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .sessions-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: rgba(240,230,210,0.45); font-weight: 500; }
+  .new-btn { background: rgba(201,168,76,0.12); color: #c9a84c; border: 1px solid rgba(201,168,76,0.25); border-radius: 5px; padding: 4px 8px; font-size: 11px; cursor: pointer; }
+  .search-box { background: rgba(240,230,210,0.05); border: 1px solid rgba(240,230,210,0.08); border-radius: 5px; padding: 5px 8px; color: rgba(240,230,210,0.45); font-size: 12px; width: 100%; }
+  .sessions-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+  .group-label { padding: 6px 14px 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: rgba(240,230,210,0.3); }
+  .session-row { padding: 8px 14px; cursor: pointer; border-left: 2px solid transparent; }
+  .session-row.active { background: rgba(201,168,76,0.06); border-left-color: #c9a84c; }
+  .session-row:hover:not(.active) { background: rgba(240,230,210,0.03); }
+  .session-name { color: rgba(240,230,210,0.85); font-size: 12px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .session-row.active .session-name { color: rgba(240,230,210,0.95); }
+  .session-meta { color: rgba(240,230,210,0.35); font-size: 11px; }
+  .chat-area { flex: 1; display: flex; flex-direction: column; background: #1c1a16; }
+  .chat-topbar { padding: 10px 16px; border-bottom: 1px solid rgba(240,230,210,0.08); display: flex; align-items: center; justify-content: space-between; }
+  .chat-title { color: rgba(240,230,210,0.9); font-size: 13px; font-weight: 500; }
+  .model-pill { background: rgba(240,230,210,0.06); border: 1px solid rgba(240,230,210,0.1); border-radius: 5px; padding: 3px 8px; font-size: 11px; color: rgba(240,230,210,0.55); cursor: pointer; }
+  .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .bubble { max-width: 80%; }
+  .bubble.user { align-self: flex-end; }
+  .bubble.ai { align-self: flex-start; }
+  .bubble-inner { padding: 9px 13px; border-radius: 10px; font-size: 13px; line-height: 1.55; }
+  .bubble.user .bubble-inner { background: rgba(201,168,76,0.12); color: rgba(240,230,210,0.9); border: 1px solid rgba(201,168,76,0.2); border-radius: 10px 10px 3px 10px; }
+  .bubble.ai .bubble-inner { background: #211e19; color: rgba(240,230,210,0.85); border: 1px solid rgba(240,230,210,0.1); border-radius: 10px 10px 10px 3px; }
+  .bubble-actions { display: flex; gap: 8px; margin-top: 6px; }
+  .bubble-action { background: none; border: 1px solid rgba(240,230,210,0.12); border-radius: 4px; padding: 3px 8px; font-size: 11px; color: rgba(240,230,210,0.5); cursor: pointer; }
+  .bubble-action.save { color: #c9a84c; border-color: rgba(201,168,76,0.25); }
+  .mention-chip { display: inline-flex; align-items: center; gap: 3px; background: rgba(61,158,138,0.12); color: #3d9e8a; border: 1px solid rgba(61,158,138,0.25); border-radius: 4px; padding: 1px 5px; font-size: 12px; }
+  .chat-input-area { padding: 12px 16px; border-top: 1px solid rgba(240,230,210,0.08); }
+  .input-row { display: flex; gap: 8px; align-items: flex-end; }
+  .chat-input { flex: 1; background: rgba(240,230,210,0.05); border: 1px solid rgba(240,230,210,0.12); border-radius: 8px; padding: 9px 12px; color: rgba(240,230,210,0.9); font-size: 13px; resize: none; min-height: 38px; }
+  .send-btn { background: #c9a84c; color: #141210; border: none; border-radius: 6px; padding: 8px 14px; font-size: 13px; font-weight: 500; cursor: pointer; }
+  .at-btn { background: rgba(240,230,210,0.06); border: 1px solid rgba(240,230,210,0.1); border-radius: 6px; padding: 8px 10px; color: rgba(240,230,210,0.55); font-size: 12px; cursor: pointer; }
+  .context-panel { width: 248px; background: #211e19; border-left: 1px solid rgba(240,230,210,0.08); display: flex; flex-direction: column; }
+  .ctx-section { padding: 12px 14px; border-bottom: 1px solid rgba(240,230,210,0.06); }
+  .ctx-section:last-child { border-bottom: none; }
+  .ctx-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: rgba(240,230,210,0.35); margin-bottom: 8px; }
+  .ctx-chip { display: inline-flex; align-items: center; gap: 5px; background: rgba(240,230,210,0.05); border: 1px solid rgba(240,230,210,0.1); border-radius: 5px; padding: 4px 8px; font-size: 11px; color: rgba(240,230,210,0.7); margin: 2px; }
+  .ctx-chip .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .ctx-chip .remove { color: rgba(240,230,210,0.3); margin-left: 3px; cursor: pointer; font-size: 10px; }
+  .pin-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid rgba(240,230,210,0.05); }
+  .pin-row:last-child { border-bottom: none; }
+  .pin-icon { width: 22px; height: 22px; border-radius: 4px; background: rgba(201,168,76,0.1); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .pin-name { flex: 1; font-size: 11px; color: rgba(240,230,210,0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pin-remove { color: rgba(240,230,210,0.25); font-size: 10px; cursor: pointer; }
+  .pin-add { display: flex; align-items: center; gap: 5px; color: rgba(240,230,210,0.3); font-size: 11px; cursor: pointer; padding: 4px 0; margin-top: 4px; }
+  .pin-add:hover { color: rgba(240,230,210,0.55); }
+  .always-tag { display: inline-flex; align-items: center; gap: 4px; background: rgba(201,168,76,0.08); border: 1px solid rgba(201,168,76,0.18); border-radius: 4px; padding: 3px 7px; font-size: 11px; color: rgba(201,168,76,0.8); margin-bottom: 4px; }
+  .ctx-footer { padding: 10px 14px; margin-top: auto; }
+  .ctx-hint { font-size: 10px; color: rgba(240,230,210,0.25); line-height: 1.5; text-align: center; }
+</style>
+
+<div class="app">
+  <div class="rail">
+    <div class="rail-icon" title="Writing">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+    </div>
+    <div class="rail-icon" title="Codex">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+    </div>
+    <div class="rail-icon" title="Series Planner">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+    </div>
+    <div class="rail-icon active" title="The Loom">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    </div>
+    <div class="rail-icon" title="Notes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    </div>
+    <div class="rail-spacer"></div>
+    <div class="rail-icon" title="AI Rules">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M5.34 5.34L3.93 6.75M20 12h-2M6 12H4M19.07 19.07l-1.41-1.41M5.34 18.66L3.93 17.25M12 20v-2M12 6V4"/></svg>
+    </div>
+    <div class="rail-icon" title="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    </div>
+  </div>
+
+  <div class="sessions">
+    <div class="sessions-header">
+      <div class="sessions-header-row">
+        <span class="sessions-title">The Loom</span>
+        <button class="new-btn">+ New</button>
+      </div>
+      <input class="search-box" placeholder="Search sessions..." />
+    </div>
+    <div class="sessions-list">
+      <div class="group-label">Today</div>
+      <div class="session-row active">
+        <div class="session-name">Kaeladrin's backstory</div>
+        <div class="session-meta">14 messages</div>
+      </div>
+      <div class="session-row">
+        <div class="session-name">The Veilstone Accord</div>
+        <div class="session-meta">6 messages</div>
+      </div>
+      <div class="group-label">This week</div>
+      <div class="session-row">
+        <div class="session-name">Magic system — cost & limits</div>
+        <div class="session-meta">22 messages</div>
+      </div>
+      <div class="session-row">
+        <div class="session-name">Thornwall geography</div>
+        <div class="session-meta">9 messages</div>
+      </div>
+      <div class="session-row">
+        <div class="session-name">Faction politics draft</div>
+        <div class="session-meta">11 messages</div>
+      </div>
+      <div class="group-label">Earlier</div>
+      <div class="session-row">
+        <div class="session-name">World history — First Age</div>
+        <div class="session-meta">31 messages</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-area">
+    <div class="chat-topbar">
+      <span class="chat-title">Kaeladrin's backstory</span>
+      <div class="model-pill">Claude Sonnet ▾</div>
+    </div>
+    <div class="messages">
+      <div class="bubble user">
+        <div class="bubble-inner">What would drive Kaeladrin to betray the Thornwall Order after decades of loyalty?</div>
+      </div>
+      <div class="bubble ai">
+        <div class="bubble-inner">
+          Given that <span class="mention-chip"><span class="dot" style="background:#c9a84c"></span>Kaeladrin</span> spent 40 years believing the Order protected the weak, the betrayal lands hardest if it comes from discovering the opposite — that the Order's peace was purchased by sacrificing entire villages during the Silence War, a truth buried in the <span class="mention-chip"><span class="dot" style="background:#4ab3d4"></span>Veilstone Archives</span>.<br><br>
+          The internal logic: loyalty this deep doesn't crack for small reasons. It shatters when the thing you served turns out to be the wound you thought you were healing.
+        </div>
+        <div class="bubble-actions">
+          <button class="bubble-action save">Save to Codex</button>
+          <button class="bubble-action">Copy</button>
+          <button class="bubble-action">Retry</button>
+        </div>
+      </div>
+      <div class="bubble user">
+        <div class="bubble-inner">I love that. What if he found this out from an old rival who survived the Silence War?</div>
+      </div>
+      <div class="bubble ai">
+        <div class="bubble-inner">
+          A survivor-rival is perfect — it means the revelation comes with a face attached, someone Kaeladrin dismissed or defeated years ago. The rival having outlasted everything Kaeladrin fought to preserve gives the information both credibility and sting.<br><br>
+          Consider: the rival doesn't want revenge. They just want someone inside the Order to finally know the truth before they die. That restraint makes them more devastating than any antagonist.
+        </div>
+        <div class="bubble-actions">
+          <button class="bubble-action save">Save to Codex</button>
+          <button class="bubble-action">Copy</button>
+          <button class="bubble-action">Retry</button>
+        </div>
+      </div>
+    </div>
+    <div class="chat-input-area">
+      <div class="input-row">
+        <button class="at-btn">@ Mention</button>
+        <input class="chat-input" placeholder="Ask about your world..." />
+        <button class="send-btn">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="context-panel">
+    <div class="ctx-section">
+      <div class="ctx-label">Always in context</div>
+      <div class="always-tag">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        AI Rules · World summary
+      </div>
+    </div>
+
+    <div class="ctx-section">
+      <div class="ctx-label">Pinned conversations</div>
+      <div class="pin-row">
+        <div class="pin-icon">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </div>
+        <span class="pin-name">Magic system — cost &amp; limits</span>
+        <span class="pin-remove">✕</span>
+      </div>
+      <div class="pin-row">
+        <div class="pin-icon">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </div>
+        <span class="pin-name">World history — First Age</span>
+        <span class="pin-remove">✕</span>
+      </div>
+      <div class="pin-add">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Pin a conversation
+      </div>
+    </div>
+
+    <div class="ctx-section">
+      <div class="ctx-label">Pinned Codex entries</div>
+      <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px;">
+        <div class="ctx-chip"><span class="dot" style="background:#c9a84c"></span>Kaeladrin<span class="remove">✕</span></div>
+        <div class="ctx-chip"><span class="dot" style="background:#4ab3d4"></span>Thornwall Order<span class="remove">✕</span></div>
+        <div class="ctx-chip"><span class="dot" style="background:#c47a8a"></span>Silence War<span class="remove">✕</span></div>
+      </div>
+      <div class="pin-add">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add a Codex entry
+      </div>
+    </div>
+
+    <div class="ctx-section">
+      <div class="ctx-label">Mentioned this session</div>
+      <div style="display:flex;flex-wrap:wrap;gap:3px;">
+        <div class="ctx-chip"><span class="dot" style="background:#c9a84c"></span>Kaeladrin</div>
+        <div class="ctx-chip"><span class="dot" style="background:#3d9e8a"></span>Veilstone Archives</div>
+        <div class="ctx-chip"><span class="dot" style="background:#4ab3d4"></span>Thornwall Order</div>
+      </div>
+    </div>
+
+    <div class="ctx-footer">
+      <div class="ctx-hint">Pinned entries and conversations stay in the AI's memory for this session.</div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,59 @@
+:root {
+  /* Surface backgrounds */
+  --color-rail: #141210;
+  --color-main: #1c1a16;
+  --color-panel: #211e19;
+
+  /* Gold accent */
+  --color-gold: #c9a84c;
+  --color-gold-bg: rgba(201, 168, 76, 0.10);
+  --color-gold-bg-hover: rgba(201, 168, 76, 0.16);
+  --color-gold-border: rgba(201, 168, 76, 0.20);
+  --color-gold-border-focus: rgba(201, 168, 76, 0.40);
+
+  /* Borders */
+  --border-subtle: rgba(240, 230, 210, 0.08);
+  --border-medium: rgba(240, 230, 210, 0.14);
+
+  /* Text */
+  --text-primary: rgba(240, 230, 210, 0.90);
+  --text-dim: rgba(240, 230, 210, 0.65);
+  --text-muted: rgba(240, 230, 210, 0.45);
+
+  /* Status */
+  --color-success: #6a9e5a;
+  --color-success-bg: rgba(106, 158, 90, 0.12);
+  --color-error: #c47560;
+  --color-error-bg: rgba(196, 117, 96, 0.12);
+
+  /* Categories */
+  --color-character:  #c9a84c;
+  --color-location:   #3d9e8a;
+  --color-faction:    #4ab3d4;
+  --color-magic:      #7b5ea7;
+  --color-event:      #c47a8a;
+  --color-item:       #c4824a;
+  --color-manuscript: #6a9e5a;
+
+  /* shadcn variable mapping */
+  --background:             var(--color-main);
+  --foreground:             var(--text-primary);
+  --card:                   var(--color-panel);
+  --card-foreground:        var(--text-primary);
+  --popover:                var(--color-panel);
+  --popover-foreground:     var(--text-primary);
+  --primary:                var(--color-gold);
+  --primary-foreground:     #141210;
+  --secondary:              var(--color-panel);
+  --secondary-foreground:   var(--text-dim);
+  --muted:                  rgba(240, 230, 210, 0.06);
+  --muted-foreground:       var(--text-muted);
+  --accent:                 rgba(201, 168, 76, 0.10);
+  --accent-foreground:      var(--color-gold);
+  --destructive:            var(--color-error);
+  --destructive-foreground: var(--text-primary);
+  --border:                 var(--border-subtle);
+  --input:                  var(--border-medium);
+  --ring:                   var(--color-gold);
+  --radius:                 6px;
+}
