@@ -28,9 +28,9 @@ html, body {
   font-size: 16px;
   line-height: 1.5;
   color: var(--text-primary);
-  max-width: 680px;
+  width: min(100%, var(--editor-content-max-width, 1180px));
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 2.25rem clamp(1.5rem, 2.5vw, 2.5rem);
   min-height: 100%;
 }
 

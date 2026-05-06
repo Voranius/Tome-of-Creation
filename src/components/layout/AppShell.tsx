@@ -1,6 +1,6 @@
-import { useEffect } from 'react'
-import { invoke } from '@tauri-apps/api/core'
-import { flushAutosaves } from '../../lib/autosaveRegistry'
+import { useEffect, useRef } from 'react'
+import { getCurrentWindow } from '@tauri-apps/api/window'
+import { closeOpenProject, saveOpenProject } from '../../lib/projectPersistence'
 import { Rail } from './Rail'
 import { WritingScreen } from '../../screens/WritingScreen'
 import { CodexScreen } from '../../screens/CodexScreen'
@@ -15,21 +15,53 @@ import type { Screen } from '../../store/uiStore'
 
 export function AppShell() {
   const setLastSaved = useProjectStore(s => s.setLastSaved)
+  const isProjectOpen = useProjectStore(s => s.isOpen)
+  const dbPath = useProjectStore(s => s.dbPath)
   const activeScreen = useUIStore(s => s.activeScreen)
   const navigate = useUIStore(s => s.navigate)
+  const isClosingRef = useRef(false)
 
   useEffect(() => {
     const handler = async (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's' && dbPath) {
         e.preventDefault()
-        await flushAutosaves()
-        await invoke('save_project')
+        await saveOpenProject(dbPath)
         setLastSaved(new Date())
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [setLastSaved])
+  }, [dbPath, setLastSaved])
+
+  useEffect(() => {
+    const currentWindow = getCurrentWindow()
+    let isMounted = true
+
+    const teardownPromise = currentWindow.onCloseRequested(async event => {
+      if (isClosingRef.current || !isProjectOpen) {
+        return
+      }
+
+      event.preventDefault()
+      isClosingRef.current = true
+
+      try {
+        await closeOpenProject()
+        if (isMounted) {
+          setLastSaved(new Date())
+        }
+        await currentWindow.close()
+      } catch (error) {
+        isClosingRef.current = false
+        console.error('Failed to close project cleanly:', error)
+      }
+    })
+
+    return () => {
+      isMounted = false
+      void teardownPromise.then(unlisten => unlisten())
+    }
+  }, [isProjectOpen, setLastSaved])
 
   const screens: Record<Screen, React.ReactNode> = {
     writing:  <WritingScreen />,

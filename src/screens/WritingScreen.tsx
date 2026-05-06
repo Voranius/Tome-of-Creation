@@ -17,6 +17,7 @@ import {
   SortableContext, useSortable, verticalListSortingStrategy, arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { useWritingStore } from '../store/writingStore'
 import { useProjectStore } from '../store/projectStore'
 import { useAIStore } from '../store/aiStore'
@@ -27,6 +28,9 @@ import { getChapters, createChapter, updateChapterTitle, archiveChapter, reorder
 import { getScenes, createScene, updateScene, archiveScene, reorderScenes } from '../lib/db/scenes'
 import { NoAIKeyTooltip } from '../components/ai/NoAIKeyTooltip'
 import { AIButton } from '../components/ui/AIButton'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover'
 import type { Chapter, Scene } from '../lib/db/types'
 
 function ChapterDragPreview({
@@ -647,25 +651,32 @@ function OutlinePanel() {
 function ToolbarBtn({
   onActivate,
   active = false,
+  disabled = false,
   title,
   children,
 }: {
   onActivate: () => void
   active?: boolean
+  disabled?: boolean
   title: string
   children: React.ReactNode
 }) {
   return (
     <button
-      onMouseDown={e => { e.preventDefault(); onActivate() }}
+      onMouseDown={e => {
+        e.preventDefault()
+        if (!disabled) onActivate()
+      }}
       title={title}
+      disabled={disabled}
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        width: 28, height: 28, borderRadius: 4, border: 'none', cursor: 'pointer',
+        width: 28, height: 28, borderRadius: 4, border: 'none', cursor: disabled ? 'default' : 'pointer',
         fontFamily: 'inherit', fontSize: 13,
         background: active ? 'rgba(201,168,76,0.15)' : 'transparent',
-        color: active ? 'var(--color-gold)' : 'var(--text-dim)',
-        transition: 'background 100ms, color 100ms',
+        color: disabled ? 'var(--text-muted)' : active ? 'var(--color-gold)' : 'var(--text-dim)',
+        opacity: disabled ? 0.45 : 1,
+        transition: 'background 100ms, color 100ms, opacity 100ms',
       }}
     >
       {children}
@@ -673,11 +684,37 @@ function ToolbarBtn({
   )
 }
 
-function ToolbarDivider() {
-  return <div style={{ width: 1, height: 16, background: 'var(--border-medium)', margin: '0 3px', flexShrink: 0 }} />
+function ToolbarGroup({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 1,
+        padding: 4,
+        borderRadius: 8,
+        background: 'rgba(240,230,210,0.03)',
+        border: '1px solid var(--border-subtle)',
+        flexShrink: 0,
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+const editorContentShellStyle: React.CSSProperties = {
+  width: 'min(100%, var(--editor-content-max-width))',
+  margin: '0 auto',
+}
+
+const editorCanvasStyle: React.CSSProperties = {
+  width: 'min(100%, var(--editor-canvas-max-width))',
+  margin: '0 auto',
 }
 
 const FONT_SIZES = [12, 14, 16, 18, 20, 24]
+const SCENE_AUTOSAVE_DELAY_MS = 250
 type FontSizeSelectValue = 'default' | `${number}` | 'mixed'
 
 const selectStyle: React.CSSProperties = {
@@ -696,6 +733,18 @@ function normalizeTextStyleValue(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null
 }
 
+function normalizeLinkValue(value: string): string | null {
+  const trimmed = value.trim()
+
+  if (!trimmed) return null
+
+  if (/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(trimmed)) {
+    return trimmed
+  }
+
+  return `https://${trimmed}`
+}
+
 function getSelectionTextStyleValue(
   editor: Editor,
   attribute: 'fontKey' | 'fontSize'
@@ -705,18 +754,31 @@ function getSelectionTextStyleValue(
     return normalizeTextStyleValue(attributes[attribute])
   }
 
-  const values = new Set<string | null>()
+  const explicitValues = new Set<string>()
+  let sawUnstyledText = false
   const { from, to } = editor.state.selection
 
   editor.state.doc.nodesBetween(from, to, node => {
-    if (!node.isText) return
+    if (!node.isText || !node.text || node.text.length === 0) return
 
     const textStyleMark = node.marks.find(mark => mark.type.name === 'textStyle')
-    values.add(normalizeTextStyleValue(textStyleMark?.attrs?.[attribute]))
+    const value = normalizeTextStyleValue(textStyleMark?.attrs?.[attribute])
+
+    if (value === null) {
+      sawUnstyledText = true
+      return
+    }
+
+    explicitValues.add(value)
   })
 
-  if (values.size === 0) return null
-  if (values.size === 1) return values.values().next().value ?? null
+  if (explicitValues.size === 0) return null
+  if (explicitValues.size === 1) {
+    const onlyValue = explicitValues.values().next().value ?? null
+    return onlyValue
+  }
+
+  if (sawUnstyledText) return 'mixed'
   return 'mixed'
 }
 
@@ -764,8 +826,17 @@ function isHeadingSelection(editor: Editor): boolean {
   return hasHeading
 }
 
+function getLinkHref(editor: Editor): string | null {
+  const attributes = editor.getAttributes('link') as Record<string, unknown>
+  const href = attributes.href
+
+  return typeof href === 'string' && href.length > 0 ? href : null
+}
+
 function EditorToolbar({ editor }: { editor: Editor | null }) {
   const [, setToolbarVersion] = useState(0)
+  const [isLinkPopoverOpen, setIsLinkPopoverOpen] = useState(false)
+  const [linkDraft, setLinkDraft] = useState('')
 
   useEffect(() => {
     if (!editor) return
@@ -792,8 +863,25 @@ function EditorToolbar({ editor }: { editor: Editor | null }) {
   const fontFamilyValue = getFontFamilySelectValue(activeEditor)
   const fontSizeValue = getFontSizeSelectValue(activeEditor)
   const fontControlsDisabled = isHeadingSelection(activeEditor)
+  const linkHref = getLinkHref(activeEditor)
+  const linkSelectionDisabled = activeEditor.state.selection.empty && !activeEditor.isActive('link')
+  const fontControlTitle = fontControlsDisabled
+    ? 'Headings use fixed font styles'
+    : fontFamilyValue === 'mixed' || fontSizeValue === 'mixed'
+      ? 'Selection contains multiple font styles'
+      : 'Applies to selected text or new typing'
+
+  function handleLinkPopoverChange(nextOpen: boolean) {
+    setIsLinkPopoverOpen(nextOpen)
+
+    if (nextOpen) {
+      setLinkDraft(linkHref ?? '')
+    }
+  }
 
   function handleFontFamilyChange(value: string) {
+    if (value === 'mixed') return
+
     if (value === 'default') {
       activeEditor.chain().focus().unsetCuratedFontFamily().run()
       return
@@ -805,6 +893,8 @@ function EditorToolbar({ editor }: { editor: Editor | null }) {
   }
 
   function handleFontSizeChange(value: string) {
+    if (value === 'mixed') return
+
     if (value === 'default') {
       activeEditor.chain().focus().unsetFontSize().run()
       return
@@ -813,92 +903,195 @@ function EditorToolbar({ editor }: { editor: Editor | null }) {
     activeEditor.chain().focus().setFontSize(`${value}px`).run()
   }
 
+  function handleApplyLink() {
+    const normalized = normalizeLinkValue(linkDraft)
+
+    if (!normalized) return
+
+    activeEditor.chain().focus().extendMarkRange('link').setLink({ href: normalized }).run()
+    setIsLinkPopoverOpen(false)
+  }
+
+  function handleRemoveLink() {
+    activeEditor.chain().focus().extendMarkRange('link').unsetLink().run()
+    setIsLinkPopoverOpen(false)
+  }
+
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0, flexWrap: 'nowrap',
-      padding: '4px 48px', borderBottom: '1px solid var(--border-subtle)', overflowX: 'auto',
+      padding: '10px 48px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0,
     }}>
-      {/* Font family */}
-      <select
-        value={fontFamilyValue}
-        onChange={e => handleFontFamilyChange(e.target.value)}
-        style={{ ...selectStyle, maxWidth: 140, opacity: fontControlsDisabled ? 0.5 : 1 }}
-        title="Font family"
-        disabled={fontControlsDisabled}
+      <div
+        style={{
+          ...editorContentShellStyle,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          flexWrap: 'wrap',
+        }}
       >
-        <option value="default">Default</option>
-        {fontFamilyValue === 'mixed' && <option value="mixed">Mixed</option>}
-        {CURATED_FONT_OPTIONS.map(option => (
-          <option key={option.value} value={option.value}>{option.label}</option>
-        ))}
-      </select>
+        <ToolbarGroup>
+          <select
+            value={fontFamilyValue}
+            onChange={e => handleFontFamilyChange(e.target.value)}
+            style={{
+              ...selectStyle,
+              width: 152,
+              opacity: fontControlsDisabled ? 0.55 : 1,
+              color: fontFamilyValue === 'mixed' ? 'var(--text-primary)' : 'var(--text-dim)',
+              borderColor: fontFamilyValue === 'mixed' ? 'var(--color-gold-border)' : 'var(--border-subtle)',
+            }}
+            title={fontControlTitle}
+            aria-label="Font family"
+            disabled={fontControlsDisabled}
+          >
+            <option value="default">Default (base)</option>
+            {fontFamilyValue === 'mixed' && <option value="mixed">Mixed</option>}
+            {CURATED_FONT_OPTIONS.map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
 
-      {/* Font size */}
-      <select
-        value={fontSizeValue}
-        onChange={e => handleFontSizeChange(e.target.value)}
-        style={{ ...selectStyle, width: 68, marginLeft: 4, opacity: fontControlsDisabled ? 0.5 : 1 }}
-        title="Font size"
-        disabled={fontControlsDisabled}
-      >
-        <option value="default">Default</option>
-        {fontSizeValue === 'mixed' && <option value="mixed">Mixed</option>}
-        {FONT_SIZES.map(s => (
-          <option key={s} value={String(s)}>{s}</option>
-        ))}
-      </select>
+          <select
+            value={fontSizeValue}
+            onChange={e => handleFontSizeChange(e.target.value)}
+            style={{
+              ...selectStyle,
+              width: 96,
+              opacity: fontControlsDisabled ? 0.55 : 1,
+              color: fontSizeValue === 'mixed' ? 'var(--text-primary)' : 'var(--text-dim)',
+              borderColor: fontSizeValue === 'mixed' ? 'var(--color-gold-border)' : 'var(--border-subtle)',
+            }}
+            title={fontControlTitle}
+            aria-label="Font size"
+            disabled={fontControlsDisabled}
+          >
+            <option value="default">Default</option>
+            {fontSizeValue === 'mixed' && <option value="mixed">Mixed</option>}
+            {FONT_SIZES.map(s => (
+              <option key={s} value={String(s)}>{s}px</option>
+            ))}
+          </select>
+        </ToolbarGroup>
 
-      <ToolbarDivider />
+        <ToolbarGroup>
+          <ToolbarBtn onActivate={() => editor.chain().focus().setParagraph().run()} active={editor.isActive('paragraph')} title="Paragraph">
+            <span style={{ fontSize: 12 }}>¶</span>
+          </ToolbarBtn>
+          <ToolbarBtn onActivate={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })} title="Heading 1">
+            <span style={{ fontWeight: 700, fontSize: 11 }}>H1</span>
+          </ToolbarBtn>
+          <ToolbarBtn onActivate={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })} title="Heading 2">
+            <span style={{ fontWeight: 700, fontSize: 11 }}>H2</span>
+          </ToolbarBtn>
+          <ToolbarBtn onActivate={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive('heading', { level: 3 })} title="Heading 3">
+            <span style={{ fontWeight: 700, fontSize: 11 }}>H3</span>
+          </ToolbarBtn>
+        </ToolbarGroup>
 
-      {/* Block type */}
-      <ToolbarBtn onActivate={() => editor.chain().focus().setParagraph().run()} active={editor.isActive('paragraph')} title="Paragraph">
-        <span style={{ fontSize: 12 }}>¶</span>
-      </ToolbarBtn>
-      <ToolbarBtn onActivate={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })} title="Heading 1">
-        <span style={{ fontWeight: 700, fontSize: 11 }}>H1</span>
-      </ToolbarBtn>
-      <ToolbarBtn onActivate={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })} title="Heading 2">
-        <span style={{ fontWeight: 700, fontSize: 11 }}>H2</span>
-      </ToolbarBtn>
-      <ToolbarBtn onActivate={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive('heading', { level: 3 })} title="Heading 3">
-        <span style={{ fontWeight: 700, fontSize: 11 }}>H3</span>
-      </ToolbarBtn>
+        <ToolbarGroup>
+          <ToolbarBtn onActivate={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold (⌘B)">
+            <span style={{ fontWeight: 700 }}>B</span>
+          </ToolbarBtn>
+          <ToolbarBtn onActivate={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic (⌘I)">
+            <span style={{ fontStyle: 'italic' }}>I</span>
+          </ToolbarBtn>
+          <ToolbarBtn onActivate={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Underline (⌘U)">
+            <span style={{ textDecoration: 'underline' }}>U</span>
+          </ToolbarBtn>
+          <ToolbarBtn onActivate={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Strikethrough">
+            <span style={{ textDecoration: 'line-through' }}>S</span>
+          </ToolbarBtn>
+          <Popover open={isLinkPopoverOpen} onOpenChange={handleLinkPopoverChange}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                title={linkSelectionDisabled ? 'Select text to add a link' : 'Add or edit link'}
+                disabled={linkSelectionDisabled}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 28,
+                  height: 28,
+                  borderRadius: 4,
+                  border: 'none',
+                  cursor: linkSelectionDisabled ? 'default' : 'pointer',
+                  fontFamily: 'inherit',
+                  fontSize: 13,
+                  background: activeEditor.isActive('link') || isLinkPopoverOpen ? 'rgba(201,168,76,0.15)' : 'transparent',
+                  color: linkSelectionDisabled
+                    ? 'var(--text-muted)'
+                    : activeEditor.isActive('link') || isLinkPopoverOpen
+                      ? 'var(--color-gold)'
+                      : 'var(--text-dim)',
+                  opacity: linkSelectionDisabled ? 0.45 : 1,
+                  transition: 'background 100ms, color 100ms, opacity 100ms',
+                }}
+              >
+                <span style={{ fontSize: 12 }}>↗</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              sideOffset={8}
+              className="w-80 border-[var(--border-medium)] bg-[var(--color-panel)] p-3 text-[var(--text-primary)] shadow-xl"
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 11, color: 'var(--text-muted)' }} htmlFor="scene-link-url">
+                    Link URL
+                  </label>
+                  <Input
+                    id="scene-link-url"
+                    autoFocus
+                    value={linkDraft}
+                    onChange={e => setLinkDraft(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleApplyLink()
+                      }
+                    }}
+                    placeholder="https://example.com"
+                  />
+                </div>
 
-      <ToolbarDivider />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Button type="button" size="sm" onClick={handleApplyLink}>
+                    Apply
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleRemoveLink}
+                    disabled={!linkHref}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </ToolbarGroup>
 
-      {/* Inline formatting */}
-      <ToolbarBtn onActivate={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold (⌘B)">
-        <span style={{ fontWeight: 700 }}>B</span>
-      </ToolbarBtn>
-      <ToolbarBtn onActivate={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic (⌘I)">
-        <span style={{ fontStyle: 'italic' }}>I</span>
-      </ToolbarBtn>
-      <ToolbarBtn onActivate={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Underline (⌘U)">
-        <span style={{ textDecoration: 'underline' }}>U</span>
-      </ToolbarBtn>
-      <ToolbarBtn onActivate={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Strikethrough">
-        <span style={{ textDecoration: 'line-through' }}>S</span>
-      </ToolbarBtn>
+        <ToolbarGroup>
+          <ToolbarBtn onActivate={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive('blockquote')} title="Blockquote">
+            <span style={{ fontSize: 14, lineHeight: 1 }}>❝</span>
+          </ToolbarBtn>
+          <ToolbarBtn onActivate={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet list">
+            <span style={{ fontSize: 12 }}>•≡</span>
+          </ToolbarBtn>
+          <ToolbarBtn onActivate={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Ordered list">
+            <span style={{ fontSize: 11 }}>1.</span>
+          </ToolbarBtn>
+          <ToolbarBtn onActivate={() => editor.chain().focus().toggleHighlight().run()} active={editor.isActive('highlight')} title="Highlight">
+            <span style={{ fontSize: 13 }}>◈</span>
+          </ToolbarBtn>
+        </ToolbarGroup>
 
-      <ToolbarDivider />
-
-      {/* Block formatting */}
-      <ToolbarBtn onActivate={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive('blockquote')} title="Blockquote">
-        <span style={{ fontSize: 14, lineHeight: 1 }}>❝</span>
-      </ToolbarBtn>
-      <ToolbarBtn onActivate={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet list">
-        <span style={{ fontSize: 12 }}>•≡</span>
-      </ToolbarBtn>
-      <ToolbarBtn onActivate={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Ordered list">
-        <span style={{ fontSize: 11 }}>1.</span>
-      </ToolbarBtn>
-
-      <ToolbarDivider />
-
-      {/* Highlight */}
-      <ToolbarBtn onActivate={() => editor.chain().focus().toggleHighlight().run()} active={editor.isActive('highlight')} title="Highlight">
-        <span style={{ fontSize: 13 }}>◈</span>
-      </ToolbarBtn>
+      </div>
     </div>
   )
 }
@@ -922,7 +1115,7 @@ function SceneEditorShell({ scene }: { scene: Scene }) {
     // Keep store in sync so switching back loads the correct content
     updateSceneInStore(scene.id, { content: c, word_count: wordCountRef.current })
     pendingRef.current = null
-  }, [scene.id]))
+  }, [scene.id]), SCENE_AUTOSAVE_DELAY_MS)
 
   // Flush any pending unsaved content when this scene instance unmounts
   useEffect(() => {
@@ -936,7 +1129,20 @@ function SceneEditorShell({ scene }: { scene: Scene }) {
       ...baseExtensions,
       Placeholder.configure({ placeholder: 'Begin your story…' }),
     ],
-    editorProps: baseEditorProps,
+    editorProps: {
+      ...baseEditorProps,
+      handleClick(_view, _pos, event) {
+        const target = event.target instanceof HTMLElement
+          ? event.target.closest('a[href]')
+          : null
+
+        if (!(target instanceof HTMLAnchorElement)) return false
+
+        event.preventDefault()
+        void openUrl(target.href).catch(err => console.error('Failed to open link:', err))
+        return true
+      },
+    },
     content: (() => {
       try { return scene.content ? JSON.parse(scene.content) : '' }
       catch { return '' }
@@ -962,25 +1168,36 @@ function SceneEditorShell({ scene }: { scene: Scene }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        ...editorCanvasStyle,
+        ['--editor-content-max-width' as string]: '1180px',
+        ['--editor-canvas-max-width' as string]: '1440px',
+      }}
+    >
       {/* Scene title */}
       <div style={{ padding: '20px 48px 0', flexShrink: 0 }}>
-        <input
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          onBlur={handleTitleBlur}
-          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-          placeholder="Scene title…"
-          style={{
-            width: '100%', background: 'transparent', border: 'none',
-            borderBottom: '1px solid transparent', outline: 'none',
-            color: 'var(--text-primary)', fontSize: 22, fontWeight: 600,
-            fontFamily: 'inherit', padding: '4px 0',
-            transition: 'border-color 150ms',
-          }}
-          onFocus={e => { e.currentTarget.style.borderBottomColor = 'var(--color-gold)' }}
-          onBlurCapture={e => { e.currentTarget.style.borderBottomColor = 'transparent' }}
-        />
+        <div style={editorContentShellStyle}>
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            onBlur={handleTitleBlur}
+            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+            placeholder="Scene title…"
+            style={{
+              width: '100%', background: 'transparent', border: 'none',
+              borderBottom: '1px solid transparent', outline: 'none',
+              color: 'var(--text-primary)', fontSize: 22, fontWeight: 600,
+              fontFamily: 'inherit', padding: '4px 0',
+              transition: 'border-color 150ms',
+            }}
+            onFocus={e => { e.currentTarget.style.borderBottomColor = 'var(--color-gold)' }}
+            onBlurCapture={e => { e.currentTarget.style.borderBottomColor = 'transparent' }}
+          />
+        </div>
       </div>
 
       <EditorToolbar editor={editor} />
@@ -998,14 +1215,16 @@ function SceneEditorShell({ scene }: { scene: Scene }) {
       <div style={{
         padding: '8px 48px',
         borderTop: '1px solid var(--border-subtle)',
-        display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0,
+        flexShrink: 0,
       }}>
-        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-          {wordCount.toLocaleString()} {wordCount === 1 ? 'word' : 'words'}
-        </span>
-        <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>
-          {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Save failed' : ''}
-        </span>
+        <div style={{ ...editorContentShellStyle, display: 'flex', alignItems: 'center', gap: 16 }}>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            {wordCount.toLocaleString()} {wordCount === 1 ? 'word' : 'words'}
+          </span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>
+            {saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Save failed' : ''}
+          </span>
+        </div>
       </div>
     </div>
   )

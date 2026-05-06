@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { invoke } from '@tauri-apps/api/core'
-import { flushAutosaves } from '../lib/autosaveRegistry'
+import { saveOpenProject } from '../lib/projectPersistence'
 import { useAIStore } from '../store/aiStore'
 import { useSettingsStore } from '../store/settingsStore'
+import { useProjectStore } from '../store/projectStore'
 import { testOpenAI } from '../lib/ai/providers/openai'
 import { testAnthropic } from '../lib/ai/providers/anthropic'
 import { testGemini } from '../lib/ai/providers/gemini'
@@ -417,6 +417,8 @@ function EditorSection() {
 }
 
 function AboutSection() {
+  const dbPath = useProjectStore(s => s.dbPath)
+
   return (
     <div>
       <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
@@ -457,8 +459,9 @@ function AboutSection() {
           <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>Open project folder</span>
           <button
             onClick={() => {
-              flushAutosaves()
-                .then(() => invoke('save_project'))
+              if (!dbPath) return
+
+              saveOpenProject(dbPath)
                 .catch(() => {})
             }}
             style={{

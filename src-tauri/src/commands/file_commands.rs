@@ -28,6 +28,35 @@ pub struct ProjectData {
     pub db_path: String,
 }
 
+fn persist_session_to_tome(session: &ProjectSession) -> Result<(), String> {
+    cleanup_sqlite_sidecars(&session.db_path);
+    pack_to_tome(&session.temp_dir, &session.project_path)?;
+    Ok(())
+}
+
+pub fn persist_open_project_on_exit(state: &ProjectState) -> Result<(), String> {
+    let mut guard = state.0.lock().map_err(|e| e.to_string())?;
+
+    if let Some(session) = guard.as_ref() {
+        persist_session_to_tome(session)?;
+        let _ = fs::remove_dir_all(&session.temp_dir);
+    }
+
+    *guard = None;
+    Ok(())
+}
+
+fn cleanup_sqlite_sidecars(db_path: &str) {
+    for suffix in ["-wal", "-shm"] {
+        let sidecar_path = format!("{db_path}{suffix}");
+        let sidecar = Path::new(&sidecar_path);
+
+        if sidecar.exists() {
+            let _ = fs::remove_file(sidecar);
+        }
+    }
+}
+
 fn pack_to_tome(temp_dir: &str, tome_path: &str) -> Result<(), String> {
     let tome_path = Path::new(tome_path);
     let temp_dir_path = Path::new(temp_dir);
@@ -52,6 +81,10 @@ fn pack_to_tome(temp_dir: &str, tome_path: &str) -> Result<(), String> {
         }
 
         let name = relative.to_string_lossy().replace('\\', "/");
+
+        if name == "project.db-wal" || name == "project.db-shm" {
+            continue;
+        }
 
         if path.is_dir() {
             zip.add_directory(format!("{}/", name), options)
@@ -129,6 +162,8 @@ pub async fn create_project(
 
     drop(conn);
 
+    cleanup_sqlite_sidecars(&db_path);
+
     pack_to_tome(&temp_dir, &path)?;
 
     let mut session = state.0.lock().map_err(|e| e.to_string())?;
@@ -155,6 +190,7 @@ pub async fn open_project(
     let db_path = format!("{}/project.db", temp_dir);
 
     unpack_from_tome(&path, &temp_dir)?;
+    cleanup_sqlite_sidecars(&db_path);
 
     let conn = rusqlite::Connection::open(&db_path).map_err(|e| e.to_string())?;
     let (project_id, title): (i64, String) = conn
@@ -185,17 +221,11 @@ pub async fn open_project(
 pub async fn save_project(state: State<'_, ProjectState>) -> Result<(), String> {
     let guard = state.0.lock().map_err(|e| e.to_string())?;
     let session = guard.as_ref().ok_or("No project is open")?;
-    pack_to_tome(&session.temp_dir, &session.project_path)?;
+    persist_session_to_tome(session)?;
     Ok(())
 }
 
 #[tauri::command]
 pub async fn close_project(state: State<'_, ProjectState>) -> Result<(), String> {
-    let mut guard = state.0.lock().map_err(|e| e.to_string())?;
-    if let Some(session) = guard.as_ref() {
-        pack_to_tome(&session.temp_dir, &session.project_path)?;
-        let _ = fs::remove_dir_all(&session.temp_dir);
-    }
-    *guard = None;
-    Ok(())
+    persist_open_project_on_exit(&state)
 }
