@@ -88,3 +88,92 @@ html, body {
   float: left;
   height: 0;
 }
+
+/* ─── Codex Mention Chips ────────────────────────────────────────────────── */
+
+.codex-mention {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px 1px 5px;
+  border-radius: 10px;
+  font-size: 0.85em;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  vertical-align: baseline;
+  transition: filter 100ms;
+}
+.codex-mention:hover { filter: brightness(1.15); }
+
+.codex-mention--characters { background: rgba(201,168,76,0.10);  border: 1px solid rgba(201,168,76,0.22);  color: var(--color-characters); }
+.codex-mention--locations  { background: rgba(61,158,138,0.10);  border: 1px solid rgba(61,158,138,0.22);  color: var(--color-locations); }
+.codex-mention--factions   { background: rgba(74,179,212,0.10);  border: 1px solid rgba(74,179,212,0.22);  color: var(--color-factions); }
+.codex-mention--magic      { background: rgba(123,94,167,0.10);  border: 1px solid rgba(123,94,167,0.22);  color: var(--color-magic); }
+.codex-mention--events     { background: rgba(196,122,138,0.10); border: 1px solid rgba(196,122,138,0.22); color: var(--color-events); }
+.codex-mention--items      { background: rgba(196,130,74,0.10);  border: 1px solid rgba(196,130,74,0.22);  color: var(--color-items); }
+
+/* ─── Mention Dropdown ───────────────────────────────────────────────────── */
+
+.mention-dropdown {
+  min-width: 220px;
+  max-width: 320px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--color-panel);
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.40);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.mention-dropdown-empty {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.mention-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: background 80ms;
+}
+.mention-dropdown-item:hover,
+.mention-dropdown-item--active { background: rgba(240,230,210,0.07); }
+
+.mention-dropdown-item__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.mention-dropdown-item__title {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mention-dropdown-item__category {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+  opacity: 0.85;
+}

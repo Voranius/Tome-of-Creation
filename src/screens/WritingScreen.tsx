@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import Placeholder from '@tiptap/extension-placeholder'
 import { baseExtensions, baseEditorProps } from '../lib/editor/editorConfig'
+import CodexMention from '../lib/editor/codexMention'
 import {
   CURATED_FONT_OPTIONS,
   isCuratedFontId,
@@ -1127,6 +1128,7 @@ function SceneEditorShell({ scene }: { scene: Scene }) {
   const editor = useEditor({
     extensions: [
       ...baseExtensions,
+      CodexMention,
       Placeholder.configure({ placeholder: 'Begin your story…' }),
     ],
     editorProps: {
