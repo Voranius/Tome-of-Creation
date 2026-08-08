@@ -3,19 +3,6 @@ use rusqlite::Connection;
 pub fn initialize_schema_at(db_path: &str) -> Result<(), String> {
     let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
 
-    // Idempotent column migrations for existing databases
-    for sql in [
-        "ALTER TABLE scenes ADD COLUMN summary TEXT",
-        "ALTER TABLE scenes ADD COLUMN tags TEXT",
-    ] {
-        if let Err(e) = conn.execute(sql, []) {
-            let msg = e.to_string();
-            if !msg.contains("duplicate column name") {
-                return Err(format!("Migration failed: {e}"));
-            }
-        }
-    }
-
     conn.execute_batch(
         "
         PRAGMA journal_mode=WAL;
@@ -244,6 +231,19 @@ pub fn initialize_schema_at(db_path: &str) -> Result<(), String> {
         ",
     )
     .map_err(|e| e.to_string())?;
+
+    // Idempotent column migrations for existing databases — must run after CREATE TABLE
+    for sql in [
+        "ALTER TABLE scenes ADD COLUMN summary TEXT",
+        "ALTER TABLE scenes ADD COLUMN tags TEXT",
+    ] {
+        if let Err(e) = conn.execute(sql, []) {
+            let msg = e.to_string();
+            if !msg.contains("duplicate column name") {
+                return Err(format!("Migration failed: {e}"));
+            }
+        }
+    }
 
     Ok(())
 }
