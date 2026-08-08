@@ -33,7 +33,7 @@ export async function createScene(chapterId: number, title: string): Promise<Sce
 
 export async function updateScene(
   id: number,
-  data: Partial<Pick<Scene, 'title' | 'content' | 'word_count' | 'pov_char_id'>>
+  data: Partial<Pick<Scene, 'title' | 'content' | 'word_count' | 'pov_char_id' | 'summary' | 'tags'>>
 ): Promise<void> {
   const db = await getDb()
   const fields = Object.keys(data) as (keyof typeof data)[]

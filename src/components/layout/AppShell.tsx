@@ -12,6 +12,7 @@ import { SettingsScreen } from '../../screens/SettingsScreen'
 import { useProjectStore } from '../../store/projectStore'
 import { useUIStore } from '../../store/uiStore'
 import type { Screen } from '../../store/uiStore'
+import { useWritingStore } from '../../store/writingStore'
 
 export function AppShell() {
   const setLastSaved = useProjectStore(s => s.setLastSaved)
@@ -19,6 +20,7 @@ export function AppShell() {
   const dbPath = useProjectStore(s => s.dbPath)
   const activeScreen = useUIStore(s => s.activeScreen)
   const navigate = useUIStore(s => s.navigate)
+  const isFocusMode = useWritingStore(s => s.isFocusMode)
   const isClosingRef = useRef(false)
 
   useEffect(() => {
@@ -75,7 +77,9 @@ export function AppShell() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
-      <Rail activeScreen={activeScreen} onNavigate={navigate} />
+      {!(activeScreen === 'writing' && isFocusMode) && (
+        <Rail activeScreen={activeScreen} onNavigate={navigate} />
+      )}
       <main style={{ flex: 1, minWidth: 0, overflow: 'hidden', background: 'var(--color-main)' }}>
         {screens[activeScreen]}
       </main>

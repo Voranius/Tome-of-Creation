@@ -10,6 +10,7 @@ interface WritingState {
   selectedSceneId: number | null
   isAIPanelOpen: boolean
   isOutlinePanelOpen: boolean
+  isFocusMode: boolean
 
   setBooks: (books: Book[]) => void
   setChapters: (chapters: Chapter[]) => void
@@ -28,6 +29,9 @@ interface WritingState {
   reorderScenesInStore: (ids: number[]) => void
   toggleAIPanel: () => void
   toggleOutlinePanel: () => void
+  toggleFocusMode: () => void
+  isMetaPanelOpen: boolean
+  toggleMetaPanel: () => void
 }
 
 export const useWritingStore = create<WritingState>()((set) => ({
@@ -39,6 +43,7 @@ export const useWritingStore = create<WritingState>()((set) => ({
   selectedSceneId: null,
   isAIPanelOpen: false,
   isOutlinePanelOpen: true,
+  isFocusMode: false,
 
   setBooks: (books) => set({ books }),
   setChapters: (chapters) => set({ chapters }),
@@ -92,4 +97,7 @@ export const useWritingStore = create<WritingState>()((set) => ({
 
   toggleAIPanel: () => set(s => ({ isAIPanelOpen: !s.isAIPanelOpen })),
   toggleOutlinePanel: () => set(s => ({ isOutlinePanelOpen: !s.isOutlinePanelOpen })),
+  toggleFocusMode: () => set(s => ({ isFocusMode: !s.isFocusMode })),
+  isMetaPanelOpen: false,
+  toggleMetaPanel: () => set(s => ({ isMetaPanelOpen: !s.isMetaPanelOpen })),
 }))

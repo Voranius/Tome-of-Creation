@@ -1488,11 +1488,157 @@ function AIPanel({ onClose, editorRef }: {
   )
 }
 
+// ─── Scene Meta Panel ─────────────────────────────────────────────────────────
+
+function SceneMetaPanel({ scene, onClose }: { scene: Scene; onClose: () => void }) {
+  const { updateSceneInStore } = useWritingStore()
+  const codexEntries = useCodexStore(s => s.entries)
+  const characters = codexEntries.filter(e => e.category === 'characters')
+
+  const [summary, setSummary] = useState(scene.summary ?? '')
+  const [tagInput, setTagInput] = useState(scene.tags ?? '')
+
+  useEffect(() => {
+    setSummary(scene.summary ?? '')
+    setTagInput(scene.tags ?? '')
+  }, [scene.id])
+
+  async function savePov(povCharId: number | null) {
+    try {
+      await updateScene(scene.id, { pov_char_id: povCharId })
+      updateSceneInStore(scene.id, { pov_char_id: povCharId })
+    } catch (err) { console.error('Failed to save POV:', err) }
+  }
+
+  async function saveSummary() {
+    const trimmed = summary.trim()
+    const value = trimmed || null
+    try {
+      await updateScene(scene.id, { summary: value })
+      updateSceneInStore(scene.id, { summary: value })
+    } catch (err) { console.error('Failed to save summary:', err) }
+  }
+
+  async function saveTags() {
+    const trimmed = tagInput.trim()
+    const value = trimmed || null
+    try {
+      await updateScene(scene.id, { tags: value })
+      updateSceneInStore(scene.id, { tags: value })
+    } catch (err) { console.error('Failed to save tags:', err) }
+  }
+
+  const tagList = tagInput.split(',').map(t => t.trim()).filter(Boolean)
+
+  const fieldLabel: React.CSSProperties = {
+    fontSize: 11, color: 'var(--text-muted)', fontWeight: 500,
+    textTransform: 'uppercase', letterSpacing: '0.05em',
+    display: 'block', marginBottom: 6,
+  }
+
+  const fieldInput: React.CSSProperties = {
+    width: '100%', background: 'rgba(240,230,210,0.05)',
+    border: '1px solid var(--border-subtle)', borderRadius: 5,
+    color: 'var(--text-primary)', fontSize: 12,
+    fontFamily: 'inherit', padding: '6px 8px',
+    outline: 'none', boxSizing: 'border-box',
+  }
+
+  return (
+    <aside style={{
+      width: 240, flexShrink: 0,
+      background: 'var(--color-panel)',
+      borderLeft: '1px solid var(--border-subtle)',
+      display: 'flex', flexDirection: 'column', overflow: 'hidden',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '12px 14px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0,
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Scene Info</span>
+        <button
+          onClick={onClose}
+          style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}
+        >×</button>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 18 }}>
+        {/* POV Character */}
+        <div>
+          <label style={fieldLabel}>POV Character</label>
+          <select
+            value={scene.pov_char_id ?? ''}
+            onChange={e => void savePov(e.target.value ? Number(e.target.value) : null)}
+            style={{ ...fieldInput, cursor: 'pointer', appearance: 'auto' }}
+          >
+            <option value="">— None —</option>
+            {characters.map(c => (
+              <option key={c.id} value={c.id}>{c.title}</option>
+            ))}
+          </select>
+          {characters.length === 0 && (
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+              Add characters in the Codex first
+            </div>
+          )}
+        </div>
+
+        {/* Scene Summary */}
+        <div>
+          <label style={fieldLabel}>Summary</label>
+          <textarea
+            value={summary}
+            onChange={e => setSummary(e.target.value)}
+            onBlur={() => void saveSummary()}
+            placeholder="Brief description of this scene…"
+            rows={4}
+            style={{ ...fieldInput, resize: 'vertical', lineHeight: 1.5 }}
+          />
+        </div>
+
+        {/* Tags */}
+        <div>
+          <label style={fieldLabel}>Tags</label>
+          <input
+            value={tagInput}
+            onChange={e => setTagInput(e.target.value)}
+            onBlur={() => void saveTags()}
+            placeholder="action, tension, mystery"
+            style={fieldInput}
+          />
+          {tagList.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
+              {tagList.map(tag => (
+                <span
+                  key={tag}
+                  style={{
+                    fontSize: 10, fontWeight: 500,
+                    padding: '2px 7px', borderRadius: 10,
+                    background: 'rgba(201,168,76,0.10)',
+                    border: '1px solid rgba(201,168,76,0.20)',
+                    color: 'var(--color-gold)',
+                  }}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </aside>
+  )
+}
+
 // ─── Top Bar ─────────────────────────────────────────────────────────────────
 
 function WritingTopBar() {
   const isAIPanelOpen = useWritingStore(s => s.isAIPanelOpen)
   const toggleAIPanel = useWritingStore(s => s.toggleAIPanel)
+  const isFocusMode = useWritingStore(s => s.isFocusMode)
+  const toggleFocusMode = useWritingStore(s => s.toggleFocusMode)
+  const isMetaPanelOpen = useWritingStore(s => s.isMetaPanelOpen)
+  const toggleMetaPanel = useWritingStore(s => s.toggleMetaPanel)
   const connectedProviders = useAIStore(s => s.connectedProviders)
 
   return (
@@ -1502,6 +1648,28 @@ function WritingTopBar() {
       padding: '0 12px', borderBottom: '1px solid var(--border-subtle)',
       background: 'var(--color-main)',
     }}>
+      <button
+        onClick={toggleMetaPanel}
+        title="Scene info"
+        style={{
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          color: isMetaPanelOpen ? 'var(--color-gold)' : 'var(--text-muted)',
+          fontSize: 13, lineHeight: 1, padding: '4px 6px', marginRight: 2,
+        }}
+      >
+        ◎
+      </button>
+      <button
+        onClick={toggleFocusMode}
+        title="Focus mode (⌘⇧F)"
+        style={{
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          color: isFocusMode ? 'var(--color-gold)' : 'var(--text-muted)',
+          fontSize: 14, lineHeight: 1, padding: '4px 6px', marginRight: 4,
+        }}
+      >
+        ▣
+      </button>
       <NoAIKeyTooltip>
         <AIButton
           onClick={toggleAIPanel}
@@ -1519,10 +1687,10 @@ export function WritingScreen() {
   const {
     books, chapters, scenes,
     selectedBookId, selectedSceneId,
-    isAIPanelOpen, isOutlinePanelOpen,
+    isAIPanelOpen, isOutlinePanelOpen, isFocusMode, isMetaPanelOpen,
     setBooks, setChapters, setScenes,
     selectBook,
-    addBook, toggleAIPanel, toggleOutlinePanel,
+    addBook, toggleAIPanel, toggleOutlinePanel, toggleFocusMode, toggleMetaPanel,
   } = useWritingStore()
 
   const projectId = useProjectStore(s => s.projectId)
@@ -1568,29 +1736,68 @@ export function WritingScreen() {
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.code === 'KeyA') {
         e.preventDefault(); toggleAIPanel()
       }
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.code === 'KeyF') {
+        e.preventDefault(); toggleFocusMode()
+      }
+      if (e.key === 'Escape' && isFocusMode) {
+        toggleFocusMode()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [toggleOutlinePanel, toggleAIPanel])
+  }, [toggleOutlinePanel, toggleAIPanel, toggleFocusMode, isFocusMode])
 
   const selectedScene = scenes.find(s => s.id === selectedSceneId) ?? null
   const editorRef = useRef<import('@tiptap/react').Editor | null>(null)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <WritingTopBar />
+      {!isFocusMode && <WritingTopBar />}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {isOutlinePanelOpen && <OutlinePanel />}
+        {isOutlinePanelOpen && !isFocusMode && <OutlinePanel />}
 
         {/* Editor area */}
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', background: 'var(--color-main)' }}>
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', background: 'var(--color-main)', position: 'relative' }}>
           {selectedScene
             ? <SceneEditorShell key={selectedScene.id} scene={selectedScene} editorRef={editorRef} />
             : <EditorEmptyState />
           }
+
+          {isFocusMode && (
+            <>
+              <div style={{
+                position: 'absolute', top: 0, left: 0, right: 0, height: 80,
+                background: 'linear-gradient(to bottom, var(--color-main), transparent)',
+                pointerEvents: 'none', zIndex: 10,
+              }} />
+              <div style={{
+                position: 'absolute', bottom: 0, left: 0, right: 0, height: 80,
+                background: 'linear-gradient(to top, var(--color-main), transparent)',
+                pointerEvents: 'none', zIndex: 10,
+              }} />
+              <button
+                onClick={toggleFocusMode}
+                title="Exit focus mode (Esc)"
+                style={{
+                  position: 'absolute', top: 12, right: 12, zIndex: 20,
+                  background: 'rgba(240,230,210,0.08)', border: '1px solid var(--border-subtle)',
+                  borderRadius: 6, color: 'var(--text-muted)', fontSize: 11,
+                  padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit',
+                  opacity: 0.6, transition: 'opacity 150ms',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.6' }}
+              >
+                Exit Focus
+              </button>
+            </>
+          )}
         </div>
 
-        {isAIPanelOpen && <AIPanel onClose={toggleAIPanel} editorRef={editorRef} />}
+        {isAIPanelOpen && !isFocusMode && <AIPanel onClose={toggleAIPanel} editorRef={editorRef} />}
+        {isMetaPanelOpen && !isFocusMode && selectedScene && (
+          <SceneMetaPanel scene={selectedScene} onClose={toggleMetaPanel} />
+        )}
       </div>
     </div>
   )

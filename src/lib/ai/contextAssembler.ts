@@ -61,6 +61,20 @@ export async function assembleWritingSystemPrompt(scene: Scene): Promise<string>
     if (sceneText) prompt += `\n${sceneText}`
   }
 
+  // POV character
+  if (scene.pov_char_id) {
+    const pov = await getEntry(scene.pov_char_id).catch(() => null)
+    if (pov) {
+      prompt += `\n\n[POV CHARACTER]\n• ${pov.title}`
+      if (pov.summary) prompt += `: ${pov.summary}`
+    }
+  }
+
+  // Scene summary hint
+  if (scene.summary?.trim()) {
+    prompt += `\n\n[SCENE SUMMARY]\n${scene.summary.trim()}`
+  }
+
   if (entryIds.length > 0) {
     const entries = await Promise.all(entryIds.map(id => getEntry(id).catch(() => null)))
     const valid = entries.filter(Boolean)

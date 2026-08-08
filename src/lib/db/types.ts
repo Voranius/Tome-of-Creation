@@ -34,6 +34,8 @@ export interface Scene {
   content: string
   sort_order: number
   word_count: number
+  summary: string | null
+  tags: string | null
   pov_char_id: number | null
   is_archived: number
   created_at: string
