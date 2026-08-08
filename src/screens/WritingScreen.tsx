@@ -3,6 +3,8 @@ import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import Placeholder from '@tiptap/extension-placeholder'
 import { baseExtensions, baseEditorProps } from '../lib/editor/editorConfig'
 import CodexMention from '../lib/editor/codexMention'
+import { assembleWritingSystemPrompt, extractMentionedEntryIds } from '../lib/ai/contextAssembler'
+import { getActiveProvider } from '../lib/ai/getActiveProvider'
 import {
   CURATED_FONT_OPTIONS,
   isCuratedFontId,
@@ -24,6 +26,7 @@ import { useProjectStore } from '../store/projectStore'
 import { useAIStore } from '../store/aiStore'
 import { useUIStore } from '../store/uiStore'
 import { useSettingsStore } from '../store/settingsStore'
+import { useCodexStore } from '../store/codexStore'
 import { getBooks, createBook } from '../lib/db/books'
 import { getChapters, createChapter, updateChapterTitle, archiveChapter, reorderChapters } from '../lib/db/chapters'
 import { getScenes, createScene, updateScene, archiveScene, reorderScenes } from '../lib/db/scenes'
@@ -1099,7 +1102,7 @@ function EditorToolbar({ editor }: { editor: Editor | null }) {
 
 // ─── Scene Editor Shell ───────────────────────────────────────────────────────
 
-function SceneEditorShell({ scene }: { scene: Scene }) {
+function SceneEditorShell({ scene, editorRef }: { scene: Scene; editorRef: React.MutableRefObject<import('@tiptap/react').Editor | null> }) {
   const { updateSceneInStore } = useWritingStore()
   const { editorFontFamily, editorFontSize } = useSettingsStore()
   const [title, setTitle] = useState(scene.title)
@@ -1158,6 +1161,11 @@ function SceneEditorShell({ scene }: { scene: Scene }) {
       setContent(json)
     },
   }, [scene.id])
+
+  useEffect(() => {
+    editorRef.current = editor
+    return () => { editorRef.current = null }
+  }, [editor])
 
   async function handleTitleBlur() {
     const trimmed = title.trim()
@@ -1249,9 +1257,112 @@ function EditorEmptyState() {
 
 // ─── AI Panel ────────────────────────────────────────────────────────────────
 
-function AIPanel({ onClose }: { onClose: () => void }) {
+type SuggestionMode = 'continue' | 'rephrase'
+type PanelState = 'idle' | 'loading' | 'result' | 'error'
+
+function AIPanel({ onClose, editorRef }: {
+  onClose: () => void
+  editorRef: React.MutableRefObject<import('@tiptap/react').Editor | null>
+}) {
   const connectedProviders = useAIStore(s => s.connectedProviders)
   const navigate = useUIStore(s => s.navigate)
+  const { scenes, selectedSceneId } = useWritingStore()
+  const codexEntries = useCodexStore(s => s.entries)
+
+  const [panelState, setPanelState] = useState<PanelState>('idle')
+  const [suggestionText, setSuggestionText] = useState('')
+  const [activeMode, setActiveMode] = useState<SuggestionMode | null>(null)
+  const [errorMsg, setErrorMsg] = useState('')
+  const [selectionHint, setSelectionHint] = useState(false)
+  const lastActionRef = useRef<(() => Promise<void>) | null>(null)
+
+  const selectedScene = scenes.find(s => s.id === selectedSceneId) ?? null
+
+  const mentionedEntries = selectedScene?.content
+    ? extractMentionedEntryIds(selectedScene.content)
+        .map(id => codexEntries.find(e => e.id === id))
+        .filter(Boolean)
+    : []
+
+  async function runContinue() {
+    if (!selectedScene) return
+    setPanelState('loading')
+    setSelectionHint(false)
+    try {
+      const systemPrompt = await assembleWritingSystemPrompt(selectedScene)
+      const active = await getActiveProvider()
+      if (!active) throw new Error('No provider available')
+      const result = await active.provider.sendMessage(
+        [{ role: 'user', content: 'Continue the scene from where it ends. Write one paragraph that flows naturally from the current text. Match the author\'s style and voice. Output only the paragraph text, no meta-commentary or labels.' }],
+        active.model,
+        systemPrompt,
+      )
+      setSuggestionText(result.trim())
+      setActiveMode('continue')
+      setPanelState('result')
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Something went wrong')
+      setPanelState('error')
+    }
+  }
+
+  async function runRephrase() {
+    const editor = editorRef.current
+    if (!editor) return
+    const { from, to, empty } = editor.state.selection
+    if (empty) { setSelectionHint(true); return }
+    setSelectionHint(false)
+    const selectedText = editor.state.doc.textBetween(from, to, ' ')
+    if (!selectedText.trim()) return
+    if (!selectedScene) return
+    setPanelState('loading')
+    try {
+      const systemPrompt = await assembleWritingSystemPrompt(selectedScene)
+      const active = await getActiveProvider()
+      if (!active) throw new Error('No provider available')
+      const result = await active.provider.sendMessage(
+        [{ role: 'user', content: `Rephrase the following text while keeping the same meaning and matching the surrounding style. Output only the rephrased text, no meta-commentary:\n\n${selectedText}` }],
+        active.model,
+        systemPrompt,
+      )
+      setSuggestionText(result.trim())
+      setActiveMode('rephrase')
+      setPanelState('result')
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Something went wrong')
+      setPanelState('error')
+    }
+  }
+
+  function handleApply() {
+    const editor = editorRef.current
+    if (!editor || !suggestionText) return
+    if (activeMode === 'continue') {
+      const end = editor.state.doc.content.size
+      editor.chain().focus().insertContentAt(end - 1, [
+        { type: 'paragraph' },
+        { type: 'paragraph', content: [{ type: 'text', text: suggestionText }] },
+      ]).run()
+    } else {
+      editor.chain().focus().insertContent(suggestionText).run()
+    }
+    setPanelState('idle')
+    setSuggestionText('')
+    setActiveMode(null)
+  }
+
+  function handleDiscard() {
+    setPanelState('idle')
+    setSuggestionText('')
+    setActiveMode(null)
+    setErrorMsg('')
+  }
+
+  const btnBase: React.CSSProperties = {
+    border: '1px solid var(--border-subtle)', borderRadius: 6,
+    padding: '6px 10px', fontSize: 12, cursor: 'pointer',
+    fontFamily: 'inherit', transition: 'background 120ms',
+  }
 
   return (
     <aside style={{
@@ -1260,46 +1371,119 @@ function AIPanel({ onClose }: { onClose: () => void }) {
       borderLeft: '1px solid var(--border-subtle)',
       display: 'flex', flexDirection: 'column',
     }}>
+      {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '12px 14px', borderBottom: '1px solid var(--border-subtle)',
-        flexShrink: 0,
+        padding: '12px 14px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0,
       }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
-          AI Assistant
-        </span>
-        <button
-          onClick={onClose}
-          style={{
-            background: 'transparent', border: 'none', color: 'var(--text-muted)',
-            cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px',
-          }}
-        >×</button>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>AI Assistant</span>
+        <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}>×</button>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        {connectedProviders.length === 0 ? (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
-              AI features need an API key
+      {connectedProviders.length === 0 ? (
+        /* No key state */
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>AI features need an API key</div>
+          <button onClick={() => navigate('settings')} style={{ ...btnBase, background: 'rgba(201,168,76,0.1)', borderColor: 'var(--color-gold-border)', color: 'var(--color-gold)' }}>
+            Set up in Settings →
+          </button>
+        </div>
+      ) : (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* Action buttons */}
+          <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: 6, marginBottom: mentionedEntries.length > 0 ? 10 : 0 }}>
+              <button
+                onClick={() => { lastActionRef.current = runContinue; void runContinue() }}
+                disabled={panelState === 'loading' || !selectedScene}
+                style={{ ...btnBase, flex: 1, background: 'rgba(201,168,76,0.08)', color: 'var(--color-gold)', borderColor: 'var(--color-gold-border)', opacity: (!selectedScene || panelState === 'loading') ? 0.5 : 1 }}
+              >
+                Continue writing
+              </button>
+              <button
+                onClick={() => { lastActionRef.current = runRephrase; void runRephrase() }}
+                disabled={panelState === 'loading' || !selectedScene}
+                style={{ ...btnBase, flex: 1, background: 'transparent', color: 'var(--text-dim)', opacity: (!selectedScene || panelState === 'loading') ? 0.5 : 1 }}
+              >
+                Rephrase
+              </button>
             </div>
-            <button
-              onClick={() => navigate('settings')}
-              style={{
-                background: 'rgba(201,168,76,0.1)', border: '1px solid var(--color-gold-border)',
-                borderRadius: 6, color: 'var(--color-gold)', fontSize: 12,
-                padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit',
-              }}
-            >
-              Set up in Settings →
-            </button>
+            {selectionHint && (
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                Select text in the editor first
+              </div>
+            )}
+            {/* Context chips */}
+            {mentionedEntries.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                <span style={{ fontSize: 10, color: 'var(--text-muted)', alignSelf: 'center', marginRight: 2 }}>Context:</span>
+                {mentionedEntries.map(entry => entry && (
+                  <span
+                    key={entry.id}
+                    className={`codex-mention codex-mention--${entry.category}`}
+                    style={{ fontSize: '0.78em' }}
+                  >
+                    @{entry.title}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-        ) : (
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
-            AI chat coming in Phase 6a
+
+          {/* Result / loading / error area */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column' }}>
+            {panelState === 'idle' && (
+              <div style={{ color: 'var(--text-muted)', fontSize: 12, textAlign: 'center', marginTop: 32 }}>
+                {selectedScene ? 'Select an action above' : 'Open a scene to use AI suggestions'}
+              </div>
+            )}
+
+            {panelState === 'loading' && (
+              <div style={{ color: 'var(--text-muted)', fontSize: 12, textAlign: 'center', marginTop: 32 }}>
+                Generating…
+              </div>
+            )}
+
+            {panelState === 'result' && (
+              <div style={{
+                background: 'rgba(240,230,210,0.04)', border: '1px solid var(--border-subtle)',
+                borderRadius: 6, padding: '10px 12px',
+                fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.6,
+                whiteSpace: 'pre-wrap',
+              }}>
+                {suggestionText}
+              </div>
+            )}
+
+            {panelState === 'error' && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ fontSize: 12, color: 'var(--color-error)', marginBottom: 10 }}>{errorMsg}</div>
+                <button
+                  onClick={() => lastActionRef.current && void lastActionRef.current()}
+                  style={{ ...btnBase, background: 'transparent', color: 'var(--text-dim)', width: '100%' }}
+                >
+                  Try again
+                </button>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+
+          {/* Apply / Discard */}
+          {panelState === 'result' && (
+            <div style={{
+              display: 'flex', gap: 6, padding: '10px 14px',
+              borderTop: '1px solid var(--border-subtle)', flexShrink: 0,
+            }}>
+              <button onClick={handleDiscard} style={{ ...btnBase, flex: 1, background: 'transparent', color: 'var(--text-muted)' }}>
+                Discard
+              </button>
+              <button onClick={handleApply} style={{ ...btnBase, flex: 1, background: 'rgba(201,168,76,0.12)', color: 'var(--color-gold)', borderColor: 'var(--color-gold-border)' }}>
+                Apply
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </aside>
   )
 }
@@ -1390,6 +1574,7 @@ export function WritingScreen() {
   }, [toggleOutlinePanel, toggleAIPanel])
 
   const selectedScene = scenes.find(s => s.id === selectedSceneId) ?? null
+  const editorRef = useRef<import('@tiptap/react').Editor | null>(null)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -1400,12 +1585,12 @@ export function WritingScreen() {
         {/* Editor area */}
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden', background: 'var(--color-main)' }}>
           {selectedScene
-            ? <SceneEditorShell key={selectedScene.id} scene={selectedScene} />
+            ? <SceneEditorShell key={selectedScene.id} scene={selectedScene} editorRef={editorRef} />
             : <EditorEmptyState />
           }
         </div>
 
-        {isAIPanelOpen && <AIPanel onClose={toggleAIPanel} />}
+        {isAIPanelOpen && <AIPanel onClose={toggleAIPanel} editorRef={editorRef} />}
       </div>
     </div>
   )
