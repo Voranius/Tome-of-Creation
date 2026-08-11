@@ -826,6 +826,13 @@ function AIPanel({ onClose, editorRef }: {
 
   const selectedScene = scenes.find(s => s.id === selectedSceneId) ?? null
 
+  useEffect(() => {
+    rephraseRangeRef.current = null
+    setPanelState('idle')
+    setSuggestionText('')
+    setActiveMode(null)
+  }, [selectedSceneId])
+
   const mentionedEntries = selectedScene?.content
     ? extractMentionedEntryIds(selectedScene.content)
         .map(id => codexEntries.find(e => e.id === id))
@@ -1253,18 +1260,22 @@ export function WritingScreen() {
   // Load books → auto-select first
   useEffect(() => {
     if (!projectId) return
+    let cancelled = false
     getBooks(projectId)
       .then(async (loadedBooks) => {
+        if (cancelled) return
         setBooks(loadedBooks)
         if (loadedBooks.length === 0) {
           const book = await createBook(projectId, 'Book 1')
+          if (cancelled) return
           addBook(book)
           selectBook(book.id)
         } else {
           selectBook(loadedBooks[0].id)
         }
       })
-      .catch(err => console.error('Failed to load writing data:', err))
+      .catch(err => { if (!cancelled) console.error('Failed to load writing data:', err) })
+    return () => { cancelled = true }
   }, [projectId])
 
   // Reload chapters whenever the selected book changes

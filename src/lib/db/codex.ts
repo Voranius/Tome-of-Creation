@@ -129,6 +129,13 @@ export async function addRelation(
   relation?: string
 ): Promise<void> {
   const db = await getDb()
+  const existing = await db.select<{ id: number }[]>(
+    `SELECT id FROM codex_relations
+     WHERE (entry_a_id = ? AND entry_b_id = ?) OR (entry_a_id = ? AND entry_b_id = ?)
+     LIMIT 1`,
+    [entryAId, entryBId, entryBId, entryAId]
+  )
+  if (existing.length > 0) return
   await db.execute(
     'INSERT INTO codex_relations (entry_a_id, entry_b_id, relation) VALUES (?, ?, ?)',
     [entryAId, entryBId, relation ?? null]

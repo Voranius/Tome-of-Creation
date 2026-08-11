@@ -4,9 +4,9 @@ import { checkpointAndCloseDb, initDb } from './db/db'
 
 export async function saveOpenProject(dbPath: string): Promise<void> {
   await flushAutosaves()
-  await checkpointAndCloseDb()
 
   try {
+    await checkpointAndCloseDb()
     await invoke('save_project')
   } finally {
     await initDb(dbPath)

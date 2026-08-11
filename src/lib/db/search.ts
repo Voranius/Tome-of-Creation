@@ -64,10 +64,11 @@ function makeExcerpt(content: string, query: string, radius = 80): string {
 export async function searchAll(query: string): Promise<SearchResult[]> {
   if (!query.trim()) return []
   const db = await getDb()
+  const qLower = query.toLowerCase()
   const escaped = query.replace(/[\\%_]/g, '\\$&')
   const like = `%${escaped}%`
 
-  const [scenes, codex, notes, loom] = await Promise.all([
+  const [allScenes, allCodex, allNotes, loom] = await Promise.all([
     db.select<Array<{
       id: number; title: string; content: string
       chap_title: string; book_title: string
@@ -79,23 +80,15 @@ export async function searchAll(query: string): Promise<SearchResult[]> {
        FROM scenes s
        JOIN chapters c ON c.id = s.chapter_id
        JOIN books b ON b.id = c.book_id
-       WHERE s.is_archived = 0 AND (s.title LIKE ? ESCAPE '\\' OR s.content LIKE ? ESCAPE '\\')
-       LIMIT 20`,
-      [like, like]
+       WHERE s.is_archived = 0`
     ).catch(() => [] as Array<{id:number;title:string;content:string;chap_title:string;book_title:string;chapter_id:number;book_id:number}>),
 
-    db.select<Array<{id: number; title: string; content: string; category: string}>>(
-      `SELECT id, title, content, category FROM codex_entries
-       WHERE is_archived = 0 AND (title LIKE ? ESCAPE '\\' OR content LIKE ? ESCAPE '\\' OR summary LIKE ? ESCAPE '\\')
-       LIMIT 20`,
-      [like, like, like]
-    ).catch(() => [] as Array<{id:number;title:string;content:string;category:string}>),
+    db.select<Array<{id: number; title: string; content: string; summary: string | null; category: string}>>(
+      `SELECT id, title, content, summary, category FROM codex_entries WHERE is_archived = 0`
+    ).catch(() => [] as Array<{id:number;title:string;content:string;summary:string|null;category:string}>),
 
     db.select<Array<{id: number; title: string; content: string}>>(
-      `SELECT id, title, content FROM notes
-       WHERE is_archived = 0 AND (title LIKE ? ESCAPE '\\' OR content LIKE ? ESCAPE '\\')
-       LIMIT 20`,
-      [like, like]
+      `SELECT id, title, content FROM notes WHERE is_archived = 0`
     ).catch(() => [] as Array<{id:number;title:string;content:string}>),
 
     db.select<Array<{id: number; session_title: string; content: string; session_id: number}>>(
@@ -107,6 +100,18 @@ export async function searchAll(query: string): Promise<SearchResult[]> {
       [like]
     ).catch(() => [] as Array<{id:number;session_title:string;content:string;session_id:number}>),
   ])
+
+  const scenes = allScenes
+    .filter(s => s.title.toLowerCase().includes(qLower) || tiptapToText(s.content).toLowerCase().includes(qLower))
+    .slice(0, 20)
+
+  const codex = allCodex
+    .filter(c => c.title.toLowerCase().includes(qLower) || tiptapToText(c.content).toLowerCase().includes(qLower) || (c.summary ?? '').toLowerCase().includes(qLower))
+    .slice(0, 20)
+
+  const notes = allNotes
+    .filter(n => n.title.toLowerCase().includes(qLower) || tiptapToText(n.content).toLowerCase().includes(qLower))
+    .slice(0, 20)
 
   const results: SearchResult[] = []
 

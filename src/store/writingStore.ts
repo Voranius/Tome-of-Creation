@@ -21,6 +21,7 @@ interface WritingState {
   addBook: (book: Book) => void
   addChapter: (chapter: Chapter) => void
   addScene: (scene: Scene) => void
+  updateBookInStore: (id: number, title: string) => void
   updateChapterInStore: (id: number, data: Partial<Chapter>) => void
   updateSceneInStore: (id: number, data: Partial<Scene>) => void
   archiveChapterInStore: (id: number) => void
@@ -46,6 +47,8 @@ export const useWritingStore = create<WritingState>()((set) => ({
   isFocusMode: false,
 
   setBooks: (books) => set({ books }),
+  updateBookInStore: (id, title) =>
+    set(s => ({ books: s.books.map(b => b.id === id ? { ...b, title } : b) })),
   setChapters: (chapters) => set({ chapters }),
   setScenes: (scenes) => set({ scenes }),
 
@@ -82,9 +85,10 @@ export const useWritingStore = create<WritingState>()((set) => ({
   reorderChaptersInStore: (ids) =>
     set(s => ({
       chapters: ids.map((id, i) => {
-        const ch = s.chapters.find(c => c.id === id)!
+        const ch = s.chapters.find(c => c.id === id)
+        if (!ch) return null
         return { ...ch, sort_order: i }
-      }),
+      }).filter((ch): ch is typeof ch & object => ch !== null),
     })),
 
   reorderScenesInStore: (ids) =>

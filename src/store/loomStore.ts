@@ -14,7 +14,7 @@ interface LoomState {
   setSessions: (sessions: LoomSessionWithCount[]) => void
   selectSession: (id: number | null) => void
   setMessages: (msgs: LoomMessage[]) => void
-  appendMessage: (msg: LoomMessage) => void
+  appendMessage: (msg: LoomMessage, sessionId: number) => void
   setPinnedEntries: (entries: CodexEntry[]) => void
   setPinnedSessions: (sessions: LoomSessionWithCount[]) => void
   addMentionedEntry: (entry: CodexEntry) => void
@@ -45,14 +45,15 @@ export const useLoomStore = create<LoomState>()((set) => ({
     pinnedEntries: [],
     pinnedSessions: [],
     mentionedEntries: [],
+    isGenerating: false,
   }),
 
   setMessages: (messages) => set({ messages }),
 
-  appendMessage: (msg) => set((s) => ({
+  appendMessage: (msg, sessionId) => set((s) => ({
     messages: [...s.messages, msg],
     sessions: s.sessions.map((sess) =>
-      sess.id === s.selectedSessionId
+      sess.id === sessionId
         ? { ...sess, message_count: sess.message_count + 1 }
         : sess
     ),

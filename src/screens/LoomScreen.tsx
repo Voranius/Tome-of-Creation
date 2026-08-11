@@ -624,7 +624,7 @@ function InputBar() {
 
     try {
       const userMsg = await addMessage(sessionId, 'user', text)
-      appendMessage(userMsg)
+      appendMessage(userMsg, sessionId)
 
       const systemPrompt = await assembleLoomPrompt(pinnedSessions, pinnedEntries, mentionedEntries)
       const currentMessages = useLoomStore.getState().messages
@@ -639,7 +639,7 @@ function InputBar() {
       const response = await active.provider.sendMessage(providerMessages, active.model, systemPrompt)
       if (useLoomStore.getState().selectedSessionId !== sessionId) return
       const aiMsg = await addMessage(sessionId, 'assistant', response)
-      appendMessage(aiMsg)
+      appendMessage(aiMsg, sessionId)
     } catch (err) {
       console.error(err)
       showError('Something went wrong. Please try again.')

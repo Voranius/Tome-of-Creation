@@ -412,6 +412,7 @@ export function SearchScreen() {
   const inputRef = useRef<HTMLInputElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const searchGenRef = useRef(0)
 
   useEffect(() => {
     inputRef.current?.focus()
@@ -425,16 +426,19 @@ export function SearchScreen() {
       return
     }
     debounceRef.current = setTimeout(async () => {
+      const gen = ++searchGenRef.current
       setLoading(true)
       try {
         const res = await searchAll(query)
+        if (gen !== searchGenRef.current) return
         setResults(res)
         setActiveResult(res[0] ?? null)
       } catch (err) {
+        if (gen !== searchGenRef.current) return
         console.error(err)
         setResults([])
       } finally {
-        setLoading(false)
+        if (gen === searchGenRef.current) setLoading(false)
       }
     }, 200)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }

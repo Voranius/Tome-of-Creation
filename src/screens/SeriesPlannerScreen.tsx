@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { usePlannerStore } from '../store/plannerStore'
 import { useWritingStore } from '../store/writingStore'
 import { useProjectStore } from '../store/projectStore'
@@ -82,7 +82,7 @@ function PlannerTopBar() {
 
 function BookShelf({ books }: { books: Book[] }) {
   const { selectedBookId, selectBook } = usePlannerStore()
-  const { addBook } = useWritingStore()
+  const { addBook, updateBookInStore } = useWritingStore()
   const projectId = useProjectStore(s => s.projectId)
   const [renamingId, setRenamingId] = useState<number | null>(null)
   const [renameValue, setRenameValue] = useState('')
@@ -103,7 +103,10 @@ function BookShelf({ books }: { books: Book[] }) {
 
   async function handleRenameBlur(bookId: number) {
     const trimmed = renameValue.trim() || 'Untitled Book'
-    try { await updateBook(bookId, trimmed) } catch (err) { console.error(err) }
+    try {
+      await updateBook(bookId, trimmed)
+      updateBookInStore(bookId, trimmed)
+    } catch (err) { console.error(err) }
     setRenamingId(null)
   }
 
@@ -520,7 +523,11 @@ function ChapterDetailPanel() {
 
   useEffect(() => {
     if (!selectedChapterId) { setScenes([]); return }
-    getScenes(selectedChapterId).then(setScenes).catch(console.error)
+    let cancelled = false
+    getScenes(selectedChapterId)
+      .then(s => { if (!cancelled) setScenes(s) })
+      .catch(console.error)
+    return () => { cancelled = true }
   }, [selectedChapterId])
 
   useEffect(() => {
@@ -770,19 +777,21 @@ export function SeriesPlannerScreen() {
   }, [books, selectedBookId, selectBook])
 
   // Load chapters + beats when book changes
-  const loadBookData = useCallback(async (bookId: number) => {
-    const [chapters, beats] = await Promise.all([
-      getChaptersWithWordCount(bookId),
-      getBeats(bookId),
-    ])
-    setChapters(chapters)
-    setBeats(beats)
-  }, [setChapters, setBeats])
-
   useEffect(() => {
     if (!selectedBookId) return
-    loadBookData(selectedBookId).catch(console.error)
-  }, [selectedBookId, loadBookData])
+    let cancelled = false
+    const bookId = selectedBookId
+    Promise.all([
+      getChaptersWithWordCount(bookId),
+      getBeats(bookId),
+    ]).then(([chapters, beats]) => {
+      if (!cancelled) {
+        setChapters(chapters)
+        setBeats(beats)
+      }
+    }).catch(console.error)
+    return () => { cancelled = true }
+  }, [selectedBookId, setChapters, setBeats])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--color-main)' }}>

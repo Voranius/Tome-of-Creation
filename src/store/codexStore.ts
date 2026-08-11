@@ -31,11 +31,16 @@ export const useCodexStore = create<CodexState>()((set) => ({
 
   loadEntries: async () => {
     set({ isLoading: true })
-    const [entries, archivedEntries] = await Promise.all([
-      getEntries(),
-      getArchivedEntries(),
-    ])
-    set({ entries, archivedEntries, isLoading: false })
+    try {
+      const [entries, archivedEntries] = await Promise.all([
+        getEntries(),
+        getArchivedEntries(),
+      ])
+      set({ entries, archivedEntries, isLoading: false })
+    } catch (err) {
+      console.error('Failed to load codex entries:', err)
+      set({ isLoading: false })
+    }
   },
 
   selectEntry: (id) => set({ selectedEntryId: id }),

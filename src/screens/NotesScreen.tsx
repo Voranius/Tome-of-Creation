@@ -199,7 +199,7 @@ function NoteEditorShell({ note }: { note: Note }) {
       ...baseExtensions,
       Placeholder.configure({ placeholder: 'Start writing…' }),
     ],
-    ...baseEditorProps,
+    editorProps: { ...baseEditorProps },
     content: (() => { try { return note.content ? JSON.parse(note.content) : '' } catch { return '' } })(),
     onUpdate: ({ editor: e }) => {
       const json = JSON.stringify(e.getJSON())
