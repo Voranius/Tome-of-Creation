@@ -26,6 +26,11 @@ export function AppShell() {
 
   useEffect(() => {
     const handler = async (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        navigate('search')
+        return
+      }
       if ((e.metaKey || e.ctrlKey) && e.key === 's' && dbPath) {
         e.preventDefault()
         await saveOpenProject(dbPath)
