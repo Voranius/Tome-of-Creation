@@ -334,8 +334,7 @@ function AppearanceSection() {
 }
 
 function EditorSection() {
-  const { autosaveIntervalMs, update } = useSettingsStore()
-  const [spellCheck, setSpellCheck] = useState(true)
+  const { autosaveIntervalMs, spellCheck, update } = useSettingsStore()
 
   const AUTOSAVE_OPTIONS = [
     { label: '500ms', value: '500' },
@@ -393,7 +392,7 @@ function EditorSection() {
           </div>
         </div>
         <button
-          onClick={() => setSpellCheck(v => !v)}
+          onClick={() => update('spell_check', String(!spellCheck))}
           role="switch"
           aria-checked={spellCheck}
           style={{

@@ -18,6 +18,7 @@ interface CodexState {
   addEntry: (entry: CodexEntry) => void
   updateEntryInStore: (id: number, data: Partial<CodexEntry>) => void
   archiveEntryInStore: (id: number) => void
+  unarchiveEntryInStore: (id: number) => void
 }
 
 export const useCodexStore = create<CodexState>()((set) => ({
@@ -67,6 +68,17 @@ export const useCodexStore = create<CodexState>()((set) => ({
           ? [...s.archivedEntries, { ...entry, is_archived: 1 }]
           : s.archivedEntries,
         selectedEntryId: s.selectedEntryId === id ? null : s.selectedEntryId,
+      }
+    }),
+
+  unarchiveEntryInStore: (id) =>
+    set(s => {
+      const entry = s.archivedEntries.find(e => e.id === id)
+      return {
+        archivedEntries: s.archivedEntries.filter(e => e.id !== id),
+        entries: entry
+          ? [...s.entries, { ...entry, is_archived: 0 }]
+          : s.entries,
       }
     }),
 }))

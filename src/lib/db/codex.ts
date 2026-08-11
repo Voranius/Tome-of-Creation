@@ -43,12 +43,14 @@ export async function createEntry(
   return rows[0]
 }
 
+const CODEX_ENTRY_ALLOWED_FIELDS = new Set(['title', 'content', 'summary', 'tags'])
+
 export async function updateEntry(
   id: number,
   data: Partial<Pick<CodexEntry, 'title' | 'content' | 'summary' | 'tags'>>
 ): Promise<void> {
   const db = await getDb()
-  const fields = Object.keys(data) as (keyof typeof data)[]
+  const fields = (Object.keys(data) as (keyof typeof data)[]).filter(f => CODEX_ENTRY_ALLOWED_FIELDS.has(f))
   if (fields.length === 0) return
   const set = fields.map(f => `${f} = ?`).join(', ')
   const values = [...fields.map(f => data[f]), new Date().toISOString(), id]

@@ -106,16 +106,31 @@ fn unpack_from_tome(tome_path: &str, temp_dir: &str) -> Result<(), String> {
     let file = fs::File::open(tome_path).map_err(|e| e.to_string())?;
     let mut archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
 
+    let temp_dir_path = PathBuf::from(temp_dir);
+
     for i in 0..archive.len() {
         let mut entry = archive.by_index(i).map_err(|e| e.to_string())?;
-        let out_path = PathBuf::from(temp_dir).join(entry.name());
+        let entry_name = entry.name().to_string();
 
-        if entry.name().ends_with('/') {
+        // Reject any entry that could escape the temp directory
+        if entry_name.contains("..") || entry_name.starts_with('/') || entry_name.starts_with('\\') {
+            return Err(format!("Rejected unsafe path in archive: {}", entry_name));
+        }
+
+        let out_path = temp_dir_path.join(&entry_name);
+
+        // Verify the resolved path is still inside temp_dir
+        let canonical_temp = fs::canonicalize(&temp_dir_path).map_err(|e| e.to_string())?;
+        let parent = out_path.parent().unwrap_or(&out_path);
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        let canonical_parent = fs::canonicalize(parent).map_err(|e| e.to_string())?;
+        if !canonical_parent.starts_with(&canonical_temp) {
+            return Err(format!("Path traversal detected in archive entry: {}", entry_name));
+        }
+
+        if entry_name.ends_with('/') {
             fs::create_dir_all(&out_path).map_err(|e| e.to_string())?;
         } else {
-            if let Some(parent) = out_path.parent() {
-                fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-            }
             let mut out_file = fs::File::create(&out_path).map_err(|e| e.to_string())?;
             let mut buf = Vec::new();
             entry.read_to_end(&mut buf).map_err(|e| e.to_string())?;

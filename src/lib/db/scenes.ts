@@ -53,10 +53,18 @@ export async function archiveScene(id: number): Promise<void> {
 
 export async function reorderScenes(orderedIds: number[]): Promise<void> {
   const db = await getDb()
-  for (let i = 0; i < orderedIds.length; i++) {
-    await db.execute(
-      'UPDATE scenes SET sort_order = ?, updated_at = ? WHERE id = ?',
-      [i, new Date().toISOString(), orderedIds[i]]
-    )
+  const now = new Date().toISOString()
+  await db.execute('BEGIN')
+  try {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await db.execute(
+        'UPDATE scenes SET sort_order = ?, updated_at = ? WHERE id = ?',
+        [i, now, orderedIds[i]]
+      )
+    }
+    await db.execute('COMMIT')
+  } catch (err) {
+    await db.execute('ROLLBACK')
+    throw err
   }
 }

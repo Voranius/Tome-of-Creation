@@ -84,11 +84,10 @@ export const useWritingStore = create<WritingState>()((set) => ({
 
   reorderChaptersInStore: (ids) =>
     set(s => ({
-      chapters: ids.map((id, i) => {
-        const ch = s.chapters.find(c => c.id === id)
-        if (!ch) return null
-        return { ...ch, sort_order: i }
-      }).filter((ch): ch is typeof ch & object => ch !== null),
+      chapters: s.chapters.map(ch => {
+        const idx = ids.indexOf(ch.id)
+        return idx >= 0 ? { ...ch, sort_order: idx } : ch
+      }),
     })),
 
   reorderScenesInStore: (ids) =>

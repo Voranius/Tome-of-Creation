@@ -34,10 +34,16 @@ export async function updateChapterTitle(id: number, title: string): Promise<voi
 
 export async function archiveChapter(id: number): Promise<void> {
   const db = await getDb()
-  await db.execute(
-    'UPDATE chapters SET is_archived = 1, updated_at = ? WHERE id = ?',
-    [new Date().toISOString(), id]
-  )
+  const now = new Date().toISOString()
+  await db.execute('BEGIN')
+  try {
+    await db.execute('UPDATE chapters SET is_archived = 1, updated_at = ? WHERE id = ?', [now, id])
+    await db.execute('UPDATE scenes SET is_archived = 1, updated_at = ? WHERE chapter_id = ?', [now, id])
+    await db.execute('COMMIT')
+  } catch (err) {
+    await db.execute('ROLLBACK')
+    throw err
+  }
 }
 
 export async function getChaptersWithWordCount(bookId: number): Promise<ChapterWithWC[]> {
@@ -55,10 +61,18 @@ export async function getChaptersWithWordCount(bookId: number): Promise<ChapterW
 
 export async function reorderChapters(orderedIds: number[]): Promise<void> {
   const db = await getDb()
-  for (let i = 0; i < orderedIds.length; i++) {
-    await db.execute(
-      'UPDATE chapters SET sort_order = ?, updated_at = ? WHERE id = ?',
-      [i, new Date().toISOString(), orderedIds[i]]
-    )
+  const now = new Date().toISOString()
+  await db.execute('BEGIN')
+  try {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await db.execute(
+        'UPDATE chapters SET sort_order = ?, updated_at = ? WHERE id = ?',
+        [i, now, orderedIds[i]]
+      )
+    }
+    await db.execute('COMMIT')
+  } catch (err) {
+    await db.execute('ROLLBACK')
+    throw err
   }
 }

@@ -3,7 +3,7 @@ import { useCodexStore } from '../store/codexStore'
 import { useAIStore } from '../store/aiStore'
 import { useUIStore } from '../store/uiStore'
 import {
-  createEntry, updateEntry, archiveEntry,
+  createEntry, updateEntry, archiveEntry, unarchiveEntry,
   searchEntries, getRelations, addRelation, removeRelation,
 } from '../lib/db/codex'
 import { useAutosave } from '../hooks/useAutosave'
@@ -202,10 +202,7 @@ function AddConnectionDialog({
     try {
       await addRelation(currentEntryId, selectedId, relation.trim() || undefined)
       onAdded()
-      setQuery('')
-      setSelectedId(null)
-      setRelation('')
-      onClose()
+      handleClose()
     } catch (err) {
       setAddError(err instanceof Error ? err.message : 'Failed to add connection')
     } finally {
@@ -213,8 +210,17 @@ function AddConnectionDialog({
     }
   }
 
+  function handleClose() {
+    setQuery('')
+    setSelectedId(null)
+    setRelation('')
+    setAdding(false)
+    setAddError('')
+    onClose()
+  }
+
   return (
-    <Dialog open={open} onOpenChange={v => { if (!v) onClose() }}>
+    <Dialog open={open} onOpenChange={v => { if (!v) handleClose() }}>
       <DialogContent style={{ maxWidth: 440 }}>
         <DialogHeader>
           <DialogTitle>Add Connection</DialogTitle>
@@ -278,7 +284,7 @@ function AddConnectionDialog({
           )}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               style={{
                 background: 'transparent', border: '1px solid var(--border-medium)',
                 borderRadius: 6, color: 'var(--text-dim)', fontSize: 13,
@@ -664,6 +670,7 @@ function CodexPanel({
   onSelect,
   onSetCategory,
   onArchive,
+  onRestore,
   onNewEntry,
 }: {
   entries: CodexEntry[]
@@ -674,6 +681,7 @@ function CodexPanel({
   onSelect: (id: number) => void
   onSetCategory: (cat: string | null) => void
   onArchive: (id: number) => void
+  onRestore: (id: number) => void
   onNewEntry: () => void
 }) {
   const searchQuery = useCodexStore(s => s.searchQuery)
@@ -816,6 +824,7 @@ function CodexPanel({
                       onSelect={() => onSelect(e.id)}
                       onHover={setHoveredId}
                       onArchive={() => onArchive(e.id)}
+                      onRestore={showArchived ? () => onRestore(e.id) : undefined}
                     />
                   ))}
                 </div>
@@ -829,6 +838,7 @@ function CodexPanel({
                 onSelect={() => onSelect(e.id)}
                 onHover={setHoveredId}
                 onArchive={() => onArchive(e.id)}
+                onRestore={showArchived ? () => onRestore(e.id) : undefined}
               />
             ))
         }
@@ -860,7 +870,7 @@ function CodexPanel({
 }
 
 function EntryRow({
-  entry, isSelected, isHovered, onSelect, onHover, onArchive,
+  entry, isSelected, isHovered, onSelect, onHover, onArchive, onRestore,
 }: {
   entry: CodexEntry
   isSelected: boolean
@@ -868,6 +878,7 @@ function EntryRow({
   onSelect: () => void
   onHover: (id: number | null) => void
   onArchive: () => void
+  onRestore?: () => void
 }) {
   return (
     <div
@@ -907,18 +918,33 @@ function EntryRow({
         )}
       </div>
       {isHovered && (
-        <button
-          onClick={e => { e.stopPropagation(); onArchive() }}
-          title="Archive"
-          style={{
-            position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-            background: 'var(--color-panel)', border: '1px solid var(--border-subtle)',
-            borderRadius: 4, padding: '2px 6px', cursor: 'pointer',
-            color: 'var(--text-muted)', fontSize: 11, fontFamily: 'inherit',
-          }}
-        >
-          Archive
-        </button>
+        onRestore ? (
+          <button
+            onClick={e => { e.stopPropagation(); onRestore() }}
+            title="Restore"
+            style={{
+              position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+              background: 'var(--color-panel)', border: '1px solid var(--border-subtle)',
+              borderRadius: 4, padding: '2px 6px', cursor: 'pointer',
+              color: 'var(--color-gold)', fontSize: 11, fontFamily: 'inherit',
+            }}
+          >
+            Restore
+          </button>
+        ) : (
+          <button
+            onClick={e => { e.stopPropagation(); onArchive() }}
+            title="Archive"
+            style={{
+              position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+              background: 'var(--color-panel)', border: '1px solid var(--border-subtle)',
+              borderRadius: 4, padding: '2px 6px', cursor: 'pointer',
+              color: 'var(--text-muted)', fontSize: 11, fontFamily: 'inherit',
+            }}
+          >
+            Archive
+          </button>
+        )
       )}
     </div>
   )
@@ -955,7 +981,7 @@ export function CodexScreen() {
   const {
     entries, archivedEntries, selectedEntryId, activeCategory, showArchived,
     loadEntries, selectEntry, setCategory,
-    addEntry, archiveEntryInStore,
+    addEntry, archiveEntryInStore, unarchiveEntryInStore,
   } = useCodexStore()
 
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -974,6 +1000,11 @@ export function CodexScreen() {
     archiveEntryInStore(id)
   }
 
+  async function handleRestore(id: number) {
+    await unarchiveEntry(id)
+    unarchiveEntryInStore(id)
+  }
+
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       <CodexPanel
@@ -985,6 +1016,7 @@ export function CodexScreen() {
         onSelect={selectEntry}
         onSetCategory={setCategory}
         onArchive={handleArchive}
+        onRestore={handleRestore}
         onNewEntry={() => setDialogOpen(true)}
       />
 

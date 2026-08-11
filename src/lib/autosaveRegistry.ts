@@ -11,5 +11,8 @@ export function registerAutosaveFlusher(flusher: AutosaveFlusher): () => void {
 }
 
 export async function flushAutosaves(): Promise<void> {
-  await Promise.all(Array.from(autosaveFlushers, flusher => flusher()))
+  const results = await Promise.allSettled(Array.from(autosaveFlushers, flusher => flusher()))
+  for (const r of results) {
+    if (r.status === 'rejected') console.error('Autosave flush failed:', r.reason)
+  }
 }

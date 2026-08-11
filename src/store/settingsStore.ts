@@ -7,6 +7,7 @@ interface SettingsState {
   defaultProvider: string | null
   editorFontFamily: string
   editorFontSize: number
+  spellCheck: boolean
   loadFromDb: () => Promise<void>
   update: (key: string, value: string) => Promise<void>
 }
@@ -17,6 +18,7 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
   defaultProvider: null,
   editorFontFamily: 'default',
   editorFontSize: 16,
+  spellCheck: true,
 
   loadFromDb: async () => {
     const all = await getAllSettings()
@@ -28,6 +30,7 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
       defaultProvider: all.default_ai_provider || null,
       editorFontFamily: all.editor_font_family || 'default',
       editorFontSize: all.editor_font_size ? parseInt(all.editor_font_size, 10) : 16,
+      spellCheck: all.spell_check !== 'false',
     })
   },
 
@@ -36,6 +39,7 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
     else if (key === 'default_ai_provider') set({ defaultProvider: value || null })
     else if (key === 'editor_font_family') set({ editorFontFamily: value })
     else if (key === 'editor_font_size') set({ editorFontSize: parseInt(value, 10) })
+    else if (key === 'spell_check') set({ spellCheck: value !== 'false' })
     setSetting(key, value).catch(console.error)
   },
 }))

@@ -2,7 +2,8 @@ import type { AIProvider, Message } from '../types'
 
 export async function testGemini(apiKey: string): Promise<void> {
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`
+    'https://generativelanguage.googleapis.com/v1/models',
+    { headers: { 'x-goog-api-key': apiKey } }
   )
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
@@ -19,10 +20,10 @@ export class GeminiProvider implements AIProvider {
       .map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }))
 
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': this.apiKey },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systemPrompt }] },
           contents,
