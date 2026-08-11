@@ -90,6 +90,10 @@ export interface AIRule {
   updated_at: string
 }
 
+export interface ChapterWithWC extends Chapter {
+  total_word_count: number
+}
+
 export interface SeriesBeat {
   id: number
   book_id: number | null

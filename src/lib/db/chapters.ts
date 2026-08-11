@@ -1,5 +1,5 @@
 import { getDb } from './db'
-import type { Chapter } from './types'
+import type { Chapter, ChapterWithWC } from './types'
 
 export async function getChapters(bookId: number): Promise<Chapter[]> {
   const db = await getDb()
@@ -37,6 +37,19 @@ export async function archiveChapter(id: number): Promise<void> {
   await db.execute(
     'UPDATE chapters SET is_archived = 1, updated_at = ? WHERE id = ?',
     [new Date().toISOString(), id]
+  )
+}
+
+export async function getChaptersWithWordCount(bookId: number): Promise<ChapterWithWC[]> {
+  const db = await getDb()
+  return db.select<ChapterWithWC[]>(
+    `SELECT c.*, COALESCE(SUM(s.word_count), 0) as total_word_count
+     FROM chapters c
+     LEFT JOIN scenes s ON s.chapter_id = c.id AND s.is_archived = 0
+     WHERE c.book_id = ? AND c.is_archived = 0
+     GROUP BY c.id
+     ORDER BY c.sort_order ASC`,
+    [bookId]
   )
 }
 
