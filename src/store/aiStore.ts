@@ -27,7 +27,7 @@ export const useAIStore = create<AIState>()((set, get) => ({
   loadFromStore: async () => {
     const defaultProvider = (await getStoredValue('default_provider')) as ProviderKey | null
     const selectedModels = { ...DEFAULT_MODELS }
-    const providers: ProviderKey[] = ['openai', 'anthropic', 'gemini', 'ollama']
+    const providers: ProviderKey[] = ['openai', 'anthropic', 'gemini', 'ollama', 'openrouter']
     for (const p of providers) {
       const model = await getStoredValue(`model_${p}`)
       if (model) selectedModels[p] = model

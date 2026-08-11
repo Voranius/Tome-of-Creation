@@ -3,6 +3,7 @@ import { OpenAIProvider } from './providers/openai'
 import { AnthropicProvider } from './providers/anthropic'
 import { GeminiProvider } from './providers/gemini'
 import { OllamaProvider } from './providers/ollama'
+import { OpenRouterProvider } from './providers/openrouter'
 import type { AIProvider, ProviderKey } from './types'
 
 export interface ActiveProvider {
@@ -26,9 +27,10 @@ export async function getActiveProvider(): Promise<ActiveProvider | null> {
   if (!apiKey) return null
 
   const provider: AIProvider =
-    providerKey === 'openai'     ? new OpenAIProvider(apiKey) :
-    providerKey === 'anthropic'  ? new AnthropicProvider(apiKey) :
-                                   new GeminiProvider(apiKey)
+    providerKey === 'openai'      ? new OpenAIProvider(apiKey) :
+    providerKey === 'anthropic'   ? new AnthropicProvider(apiKey) :
+    providerKey === 'gemini'      ? new GeminiProvider(apiKey) :
+                                    new OpenRouterProvider(apiKey)
 
   return { provider, model, key: providerKey }
 }

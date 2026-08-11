@@ -7,6 +7,7 @@ import { testOpenAI } from '../lib/ai/providers/openai'
 import { testAnthropic } from '../lib/ai/providers/anthropic'
 import { testGemini } from '../lib/ai/providers/gemini'
 import { testOllama } from '../lib/ai/providers/ollama'
+import { testOpenRouter } from '../lib/ai/providers/openrouter'
 import { PROVIDER_LABELS, PROVIDER_MODELS } from '../lib/ai/types'
 import type { ProviderKey } from '../lib/ai/types'
 
@@ -20,13 +21,14 @@ const NAV_ITEMS: { id: Section; label: string }[] = [
   { id: 'about', label: 'About' },
 ]
 
-const PROVIDERS: ProviderKey[] = ['openai', 'anthropic', 'gemini', 'ollama']
+const PROVIDERS: ProviderKey[] = ['openai', 'anthropic', 'gemini', 'ollama', 'openrouter']
 
 const PROVIDER_COLORS: Record<ProviderKey, { bg: string; fg: string; letter: string }> = {
-  openai:    { bg: 'rgba(16,163,127,0.15)',  fg: '#10a37f', letter: 'O' },
-  anthropic: { bg: 'rgba(210,125,75,0.15)',  fg: '#d27d4b', letter: 'A' },
-  gemini:    { bg: 'rgba(66,133,244,0.15)',  fg: '#4285f4', letter: 'G' },
-  ollama:    { bg: 'rgba(240,230,210,0.08)', fg: 'var(--text-dim)', letter: 'O' },
+  openai:      { bg: 'rgba(16,163,127,0.15)',  fg: '#10a37f', letter: 'O' },
+  anthropic:   { bg: 'rgba(210,125,75,0.15)',  fg: '#d27d4b', letter: 'A' },
+  gemini:      { bg: 'rgba(66,133,244,0.15)',  fg: '#4285f4', letter: 'G' },
+  ollama:      { bg: 'rgba(240,230,210,0.08)', fg: 'var(--text-dim)', letter: 'O' },
+  openrouter:  { bg: 'rgba(110,86,207,0.15)',  fg: '#6e56cf', letter: 'R' },
 }
 
 function EyeIcon({ open }: { open: boolean }) {
@@ -82,6 +84,8 @@ function ProviderCard({ provider }: { provider: ProviderKey }) {
         await testAnthropic(key)
       } else if (provider === 'gemini') {
         await testGemini(key)
+      } else if (provider === 'openrouter') {
+        await testOpenRouter(key)
       } else {
         const models = await testOllama()
         setOllamaModels(models)
