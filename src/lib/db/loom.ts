@@ -1,14 +1,19 @@
 import { getDb } from './db'
-import type { LoomSession, LoomMessage, CodexEntry } from './types'
+import type { LoomSession, LoomSessionWithCount, LoomMessage, CodexEntry } from './types'
 
-export async function getSessions(): Promise<LoomSession[]> {
+export async function getSessions(): Promise<LoomSessionWithCount[]> {
   const db = await getDb()
-  return db.select<LoomSession[]>(
-    'SELECT * FROM loom_sessions WHERE is_archived = 0 ORDER BY updated_at DESC'
+  return db.select<LoomSessionWithCount[]>(
+    `SELECT ls.*, COUNT(lm.id) as message_count
+     FROM loom_sessions ls
+     LEFT JOIN loom_messages lm ON lm.session_id = ls.id
+     WHERE ls.is_archived = 0
+     GROUP BY ls.id
+     ORDER BY ls.updated_at DESC`
   )
 }
 
-export async function createSession(): Promise<LoomSession> {
+export async function createSession(): Promise<LoomSessionWithCount> {
   const db = await getDb()
   const result = await db.execute(
     "INSERT INTO loom_sessions (title) VALUES ('New Session')"
@@ -17,7 +22,7 @@ export async function createSession(): Promise<LoomSession> {
     'SELECT * FROM loom_sessions WHERE id = ?',
     [result.lastInsertId]
   )
-  return rows[0]
+  return { ...rows[0], message_count: 0 }
 }
 
 export async function updateSession(id: number, title: string): Promise<void> {
@@ -85,5 +90,35 @@ export async function unpinEntry(sessionId: number, entryId: number): Promise<vo
   await db.execute(
     'DELETE FROM loom_pinned_entries WHERE session_id = ? AND entry_id = ?',
     [sessionId, entryId]
+  )
+}
+
+export async function getPinnedSessions(sessionId: number): Promise<LoomSessionWithCount[]> {
+  const db = await getDb()
+  return db.select<LoomSessionWithCount[]>(
+    `SELECT ls.*, COUNT(lm.id) as message_count
+     FROM loom_sessions ls
+     JOIN loom_pinned_sessions lps ON lps.pinned_session_id = ls.id
+     LEFT JOIN loom_messages lm ON lm.session_id = ls.id
+     WHERE lps.session_id = ? AND ls.is_archived = 0
+     GROUP BY ls.id
+     ORDER BY ls.title ASC`,
+    [sessionId]
+  )
+}
+
+export async function pinSession(sessionId: number, pinnedSessionId: number): Promise<void> {
+  const db = await getDb()
+  await db.execute(
+    'INSERT OR IGNORE INTO loom_pinned_sessions (session_id, pinned_session_id) VALUES (?, ?)',
+    [sessionId, pinnedSessionId]
+  )
+}
+
+export async function unpinSession(sessionId: number, pinnedSessionId: number): Promise<void> {
+  const db = await getDb()
+  await db.execute(
+    'DELETE FROM loom_pinned_sessions WHERE session_id = ? AND pinned_session_id = ?',
+    [sessionId, pinnedSessionId]
   )
 }

@@ -73,6 +73,10 @@ export interface LoomSession {
   updated_at: string
 }
 
+export interface LoomSessionWithCount extends LoomSession {
+  message_count: number
+}
+
 export interface LoomMessage {
   id: number
   session_id: number
