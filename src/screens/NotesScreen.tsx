@@ -184,11 +184,15 @@ function NoteEditorShell({ note }: { note: Note }) {
 
   useEffect(() => { setTitle(note.title) }, [note.id])
 
-  const { status: saveStatus } = useAutosave(content, useCallback(async (c: string) => {
+  const { status: saveStatus, flush } = useAutosave(content, useCallback(async (c: string) => {
     await updateNote(note.id, { content: c, word_count: wordCount })
     updateNoteInStore(note.id, { content: c, word_count: wordCount })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note.id, wordCount]), NOTE_AUTOSAVE_DELAY_MS)
+
+  useEffect(() => {
+    return () => { void flush().catch(console.error) }
+  }, [flush])
 
   const editor = useEditor({
     extensions: [

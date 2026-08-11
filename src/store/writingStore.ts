@@ -68,7 +68,7 @@ export const useWritingStore = create<WritingState>()((set) => ({
       chapters: s.chapters.filter(c => c.id !== id),
       scenes: s.scenes.filter(sc => sc.chapter_id !== id),
       selectedChapterId: s.selectedChapterId === id ? null : s.selectedChapterId,
-      selectedSceneId: s.chapters.find(c => c.id === id)
+      selectedSceneId: s.scenes.some(sc => sc.id === s.selectedSceneId && sc.chapter_id === id)
         ? null
         : s.selectedSceneId,
     })),

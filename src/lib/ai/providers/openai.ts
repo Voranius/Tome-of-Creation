@@ -27,6 +27,8 @@ export class OpenAIProvider implements AIProvider {
     })
     if (!res.ok) throw new Error(`OpenAI error: HTTP ${res.status}`)
     const data = await res.json() as { choices: { message: { content: string } }[] }
-    return data.choices[0].message.content
+    const text = data.choices[0]?.message?.content
+    if (!text) throw new Error('OpenAI returned no content')
+    return text
   }
 }

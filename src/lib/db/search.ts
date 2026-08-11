@@ -1,5 +1,37 @@
 import { getDb } from './db'
 
+interface TipTapNode {
+  type: string
+  text?: string
+  attrs?: Record<string, unknown>
+  content?: TipTapNode[]
+}
+
+function tiptapToText(contentJson: string): string {
+  try {
+    const doc = JSON.parse(contentJson) as TipTapNode
+    const parts: string[] = []
+    function walk(node: TipTapNode) {
+      if (node.type === 'text') {
+        parts.push(node.text ?? '')
+      } else if (node.type === 'codexMention') {
+        parts.push(`@${node.attrs?.label ?? ''}`)
+      } else if (node.type === 'hardBreak') {
+        parts.push('\n')
+      } else {
+        const isBlock = ['paragraph', 'heading', 'blockquote', 'bulletList', 'orderedList', 'listItem', 'codeBlock'].includes(node.type)
+        if (isBlock && parts.length > 0) parts.push('\n')
+        node.content?.forEach(walk)
+        if (isBlock) parts.push('\n')
+      }
+    }
+    walk(doc)
+    return parts.join('').replace(/\n{3,}/g, '\n\n').trim()
+  } catch {
+    return contentJson
+  }
+}
+
 export interface SearchResult {
   id: number
   type: 'scene' | 'codex' | 'note' | 'loom_message'
@@ -32,7 +64,8 @@ function makeExcerpt(content: string, query: string, radius = 80): string {
 export async function searchAll(query: string): Promise<SearchResult[]> {
   if (!query.trim()) return []
   const db = await getDb()
-  const like = `%${query}%`
+  const escaped = query.replace(/[\\%_]/g, '\\$&')
+  const like = `%${escaped}%`
 
   const [scenes, codex, notes, loom] = await Promise.all([
     db.select<Array<{
@@ -46,21 +79,21 @@ export async function searchAll(query: string): Promise<SearchResult[]> {
        FROM scenes s
        JOIN chapters c ON c.id = s.chapter_id
        JOIN books b ON b.id = c.book_id
-       WHERE s.is_archived = 0 AND (s.title LIKE ? OR s.content LIKE ?)
+       WHERE s.is_archived = 0 AND (s.title LIKE ? ESCAPE '\\' OR s.content LIKE ? ESCAPE '\\')
        LIMIT 20`,
       [like, like]
     ).catch(() => [] as Array<{id:number;title:string;content:string;chap_title:string;book_title:string;chapter_id:number;book_id:number}>),
 
     db.select<Array<{id: number; title: string; content: string; category: string}>>(
       `SELECT id, title, content, category FROM codex_entries
-       WHERE is_archived = 0 AND (title LIKE ? OR content LIKE ? OR summary LIKE ?)
+       WHERE is_archived = 0 AND (title LIKE ? ESCAPE '\\' OR content LIKE ? ESCAPE '\\' OR summary LIKE ? ESCAPE '\\')
        LIMIT 20`,
       [like, like, like]
     ).catch(() => [] as Array<{id:number;title:string;content:string;category:string}>),
 
     db.select<Array<{id: number; title: string; content: string}>>(
       `SELECT id, title, content FROM notes
-       WHERE is_archived = 0 AND (title LIKE ? OR content LIKE ?)
+       WHERE is_archived = 0 AND (title LIKE ? ESCAPE '\\' OR content LIKE ? ESCAPE '\\')
        LIMIT 20`,
       [like, like]
     ).catch(() => [] as Array<{id:number;title:string;content:string}>),
@@ -69,7 +102,7 @@ export async function searchAll(query: string): Promise<SearchResult[]> {
       `SELECT lm.id, ls.title as session_title, lm.content, ls.id as session_id
        FROM loom_messages lm
        JOIN loom_sessions ls ON ls.id = lm.session_id
-       WHERE ls.is_archived = 0 AND lm.content LIKE ?
+       WHERE ls.is_archived = 0 AND lm.content LIKE ? ESCAPE '\\'
        LIMIT 20`,
       [like]
     ).catch(() => [] as Array<{id:number;session_title:string;content:string;session_id:number}>),
@@ -80,7 +113,7 @@ export async function searchAll(query: string): Promise<SearchResult[]> {
   for (const s of scenes) {
     results.push({
       id: s.id, type: 'scene', title: s.title,
-      excerpt: makeExcerpt(s.content, query),
+      excerpt: makeExcerpt(tiptapToText(s.content), query),
       breadcrumb: `${s.book_title} · ${s.chap_title}`,
       chapterId: s.chapter_id, bookId: s.book_id,
     })
@@ -89,7 +122,7 @@ export async function searchAll(query: string): Promise<SearchResult[]> {
     const cat = c.category.charAt(0).toUpperCase() + c.category.slice(1)
     results.push({
       id: c.id, type: 'codex', title: c.title,
-      excerpt: makeExcerpt(c.content, query),
+      excerpt: makeExcerpt(tiptapToText(c.content), query),
       breadcrumb: `Codex · ${cat}`,
       category: c.category,
     })
@@ -97,7 +130,7 @@ export async function searchAll(query: string): Promise<SearchResult[]> {
   for (const n of notes) {
     results.push({
       id: n.id, type: 'note', title: n.title,
-      excerpt: makeExcerpt(n.content, query),
+      excerpt: makeExcerpt(tiptapToText(n.content), query),
       breadcrumb: 'Notes',
     })
   }

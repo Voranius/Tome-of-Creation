@@ -31,6 +31,8 @@ export class GeminiProvider implements AIProvider {
     )
     if (!res.ok) throw new Error(`Gemini error: HTTP ${res.status}`)
     const data = await res.json() as { candidates: { content: { parts: { text: string }[] } }[] }
-    return data.candidates[0].content.parts[0].text
+    const text = data.candidates[0]?.content?.parts[0]?.text
+    if (!text) throw new Error('Gemini returned no content (possible safety block)')
+    return text
   }
 }

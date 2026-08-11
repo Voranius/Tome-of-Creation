@@ -616,13 +616,14 @@ function InputBar() {
       return
     }
 
+    const sessionId = selectedSessionId
     setInputText('')
     if (inputRef.current) inputRef.current.style.height = 'auto'
     setShowMentionPicker(false)
     setIsGenerating(true)
 
     try {
-      const userMsg = await addMessage(selectedSessionId, 'user', text)
+      const userMsg = await addMessage(sessionId, 'user', text)
       appendMessage(userMsg)
 
       const systemPrompt = await assembleLoomPrompt(pinnedSessions, pinnedEntries, mentionedEntries)
@@ -636,7 +637,8 @@ function InputBar() {
       }
 
       const response = await active.provider.sendMessage(providerMessages, active.model, systemPrompt)
-      const aiMsg = await addMessage(selectedSessionId, 'assistant', response)
+      if (useLoomStore.getState().selectedSessionId !== sessionId) return
+      const aiMsg = await addMessage(sessionId, 'assistant', response)
       appendMessage(aiMsg)
     } catch (err) {
       console.error(err)
@@ -1039,11 +1041,13 @@ export function LoomScreen() {
   // Load session data when selection changes
   useEffect(() => {
     if (!selectedSessionId) return
+    const loadId = selectedSessionId
     Promise.all([
-      getMessages(selectedSessionId),
-      getPinnedEntries(selectedSessionId),
-      getPinnedSessions(selectedSessionId),
+      getMessages(loadId),
+      getPinnedEntries(loadId),
+      getPinnedSessions(loadId),
     ]).then(([msgs, entries, pinnedSess]) => {
+      if (useLoomStore.getState().selectedSessionId !== loadId) return
       setMessages(msgs)
       setPinnedEntries(entries)
       setPinnedSessions(pinnedSess)

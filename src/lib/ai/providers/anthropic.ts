@@ -42,6 +42,8 @@ export class AnthropicProvider implements AIProvider {
     })
     if (!res.ok) throw new Error(`Anthropic error: HTTP ${res.status}`)
     const data = await res.json() as { content: { text: string }[] }
-    return data.content[0].text
+    const text = data.content[0]?.text
+    if (!text) throw new Error('Anthropic returned no content (possible content filter)')
+    return text
   }
 }

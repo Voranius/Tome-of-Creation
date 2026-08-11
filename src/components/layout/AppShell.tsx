@@ -23,6 +23,7 @@ export function AppShell() {
   const navigate = useUIStore(s => s.navigate)
   const isFocusMode = useWritingStore(s => s.isFocusMode)
   const isClosingRef = useRef(false)
+  const isSavingRef = useRef(false)
 
   useEffect(() => {
     const handler = async (e: KeyboardEvent) => {
@@ -33,8 +34,14 @@ export function AppShell() {
       }
       if ((e.metaKey || e.ctrlKey) && e.key === 's' && dbPath) {
         e.preventDefault()
-        await saveOpenProject(dbPath)
-        setLastSaved(new Date())
+        if (isSavingRef.current) return
+        isSavingRef.current = true
+        try {
+          await saveOpenProject(dbPath)
+          setLastSaved(new Date())
+        } finally {
+          isSavingRef.current = false
+        }
       }
     }
     window.addEventListener('keydown', handler)

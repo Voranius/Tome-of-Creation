@@ -74,10 +74,11 @@ export async function unarchiveEntry(id: number): Promise<void> {
 export async function searchEntries(query: string): Promise<CodexEntry[]> {
   if (!query.trim()) return getEntries()
   const db = await getDb()
-  const like = `%${query}%`
+  const escaped = query.replace(/[\\%_]/g, '\\$&')
+  const like = `%${escaped}%`
   return db.select<CodexEntry[]>(
     `SELECT * FROM codex_entries WHERE is_archived = 0
-     AND (title LIKE ? OR content LIKE ? OR summary LIKE ?)
+     AND (title LIKE ? ESCAPE '\\' OR content LIKE ? ESCAPE '\\' OR summary LIKE ? ESCAPE '\\')
      ORDER BY title ASC`,
     [like, like, like]
   )

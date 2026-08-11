@@ -822,6 +822,7 @@ function AIPanel({ onClose, editorRef }: {
   const [errorMsg, setErrorMsg] = useState('')
   const [selectionHint, setSelectionHint] = useState(false)
   const lastActionRef = useRef<(() => Promise<void>) | null>(null)
+  const rephraseRangeRef = useRef<{ from: number; to: number } | null>(null)
 
   const selectedScene = scenes.find(s => s.id === selectedSceneId) ?? null
 
@@ -862,6 +863,7 @@ function AIPanel({ onClose, editorRef }: {
     const selectedText = editor.state.doc.textBetween(from, to, ' ')
     if (!selectedText.trim()) return
     if (!selectedScene) return
+    rephraseRangeRef.current = { from, to }
     setPanelState('loading')
     try {
       const systemPrompt = await assembleWritingSystemPrompt(selectedScene)
@@ -891,7 +893,13 @@ function AIPanel({ onClose, editorRef }: {
         { type: 'paragraph', content: [{ type: 'text', text: suggestionText }] },
       ]).run()
     } else {
-      editor.chain().focus().insertContent(suggestionText).run()
+      const range = rephraseRangeRef.current
+      if (range) {
+        editor.chain().focus().deleteRange(range).insertContentAt(range.from, suggestionText).run()
+      } else {
+        editor.chain().focus().insertContent(suggestionText).run()
+      }
+      rephraseRangeRef.current = null
     }
     setPanelState('idle')
     setSuggestionText('')
@@ -1242,7 +1250,7 @@ export function WritingScreen() {
 
   const projectId = useProjectStore(s => s.projectId)
 
-  // Load books → auto-select first → load chapters
+  // Load books → auto-select first
   useEffect(() => {
     if (!projectId) return
     getBooks(projectId)
@@ -1252,15 +1260,20 @@ export function WritingScreen() {
           const book = await createBook(projectId, 'Book 1')
           addBook(book)
           selectBook(book.id)
-          return book.id
+        } else {
+          selectBook(loadedBooks[0].id)
         }
-        selectBook(loadedBooks[0].id)
-        return loadedBooks[0].id
       })
-      .then(bookId => getChapters(bookId))
-      .then(setChapters)
       .catch(err => console.error('Failed to load writing data:', err))
   }, [projectId])
+
+  // Reload chapters whenever the selected book changes
+  useEffect(() => {
+    if (!selectedBookId) return
+    getChapters(selectedBookId)
+      .then(setChapters)
+      .catch(err => console.error('Failed to load chapters:', err))
+  }, [selectedBookId])
 
   // Load scenes whenever chapters change
   useEffect(() => {
