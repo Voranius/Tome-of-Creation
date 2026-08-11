@@ -184,6 +184,7 @@ function AddConnectionDialog({
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [relation, setRelation] = useState('')
   const [adding, setAdding] = useState(false)
+  const [addError, setAddError] = useState('')
 
   const filtered = useMemo(() =>
     allEntries.filter(e =>
@@ -197,6 +198,7 @@ function AddConnectionDialog({
   async function handleAdd() {
     if (!selectedId) return
     setAdding(true)
+    setAddError('')
     try {
       await addRelation(currentEntryId, selectedId, relation.trim() || undefined)
       onAdded()
@@ -204,6 +206,8 @@ function AddConnectionDialog({
       setSelectedId(null)
       setRelation('')
       onClose()
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : 'Failed to add connection')
     } finally {
       setAdding(false)
     }
@@ -269,6 +273,9 @@ function AddConnectionDialog({
             }}
           />
 
+          {addError && (
+            <p style={{ margin: '0 0 8px', color: '#e07070', fontSize: 12 }}>{addError}</p>
+          )}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
             <button
               onClick={onClose}
@@ -391,7 +398,11 @@ function OverviewTab({ entry }: { entry: CodexEntry }) {
     updateEntryInStore(entry.id, { content: val })
   }, [entry.id])
 
-  useAutosave(content, save)
+  const { flush } = useAutosave(content, save)
+
+  useEffect(() => {
+    return () => { void flush().catch(console.error) }
+  }, [flush])
 
   return (
     <textarea

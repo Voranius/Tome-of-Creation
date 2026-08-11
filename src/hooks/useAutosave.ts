@@ -76,7 +76,7 @@ export function useAutosave(
     setStatus('saving')
 
     timerRef.current = setTimeout(() => {
-      void flush()
+      void flush().catch(console.error)
     }, delayMs)
 
     return () => {

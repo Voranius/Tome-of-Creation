@@ -1270,9 +1270,11 @@ export function WritingScreen() {
   // Reload chapters whenever the selected book changes
   useEffect(() => {
     if (!selectedBookId) return
+    let cancelled = false
     getChapters(selectedBookId)
-      .then(setChapters)
-      .catch(err => console.error('Failed to load chapters:', err))
+      .then(chs => { if (!cancelled) setChapters(chs) })
+      .catch(err => { if (!cancelled) console.error('Failed to load chapters:', err) })
+    return () => { cancelled = true }
   }, [selectedBookId])
 
   // Load scenes whenever chapters change
@@ -1282,9 +1284,11 @@ export function WritingScreen() {
       ? chapters.filter(c => c.book_id === selectedBookId).map(c => c.id)
       : chapters.map(c => c.id)
     if (chapterIds.length === 0) { setScenes([]); return }
+    let cancelled = false
     Promise.all(chapterIds.map(id => getScenes(id)))
-      .then(results => setScenes(results.flat()))
-      .catch(err => console.error('Failed to load scenes:', err))
+      .then(results => { if (!cancelled) setScenes(results.flat()) })
+      .catch(err => { if (!cancelled) console.error('Failed to load scenes:', err) })
+    return () => { cancelled = true }
   }, [chapters, selectedBookId])
 
   // Keyboard shortcuts
