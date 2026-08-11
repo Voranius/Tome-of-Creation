@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type Screen = 'writing' | 'codex' | 'planner' | 'loom' | 'notes' | 'search' | 'settings'
+export type Screen = 'writing' | 'codex' | 'planner' | 'loom' | 'notes' | 'search' | 'ai-rules' | 'settings'
 
 interface UIState {
   activeScreen: Screen

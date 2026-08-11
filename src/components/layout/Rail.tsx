@@ -1,4 +1,4 @@
-type Screen = 'writing' | 'codex' | 'planner' | 'loom' | 'notes' | 'search' | 'settings'
+type Screen = 'writing' | 'codex' | 'planner' | 'loom' | 'notes' | 'search' | 'ai-rules' | 'settings'
 
 interface RailProps {
   activeScreen: Screen
@@ -66,6 +66,15 @@ function SearchIcon() {
   )
 }
 
+function AIRulesIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 2a5 5 0 0 1 3.54 8.54L15 14l-1.41 1.41-2.47-2.47A5 5 0 1 1 9 2z" />
+      <path d="M7 9h4M9 7v4" />
+    </svg>
+  )
+}
+
 function SettingsIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -86,6 +95,7 @@ export function Rail({ activeScreen, onNavigate }: RailProps) {
     { screen: 'loom', title: 'The Loom', icon: <LoomIcon /> },
     { screen: 'notes', title: 'Notes', icon: <NotesIcon /> },
     { screen: 'search', title: 'Search', icon: <SearchIcon /> },
+    { screen: 'ai-rules', title: 'AI Rules', icon: <AIRulesIcon /> },
     { screen: 'settings', title: 'Settings', icon: <SettingsIcon /> },
   ]
 

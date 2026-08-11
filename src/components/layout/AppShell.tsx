@@ -8,6 +8,7 @@ import { SeriesPlannerScreen } from '../../screens/SeriesPlannerScreen'
 import { LoomScreen } from '../../screens/LoomScreen'
 import { NotesScreen } from '../../screens/NotesScreen'
 import { SearchScreen } from '../../screens/SearchScreen'
+import { AIRulesScreen } from '../../screens/AIRulesScreen'
 import { SettingsScreen } from '../../screens/SettingsScreen'
 import { useProjectStore } from '../../store/projectStore'
 import { useUIStore } from '../../store/uiStore'
@@ -71,8 +72,9 @@ export function AppShell() {
     planner:  <SeriesPlannerScreen />,
     loom:     <LoomScreen />,
     notes:    <NotesScreen />,
-    search:   <SearchScreen />,
-    settings: <SettingsScreen />,
+    search:     <SearchScreen />,
+    'ai-rules': <AIRulesScreen />,
+    settings:   <SettingsScreen />,
   }
 
   return (
